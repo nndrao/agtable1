@@ -1,7 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
@@ -44,41 +43,29 @@ export function SelectionSettings({ options, updateOptions }: SelectionSettingsP
 
         {options.rowSelection && options.rowSelection !== "none" && (
           <>
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">
-                  Row Click Selection
-                </FormLabel>
-                <FormDescription>
-                  Select rows by clicking anywhere
-                </FormDescription>
+                <Label className="text-base">Row Click Selection</Label>
+                <p className="text-sm text-muted-foreground">Select rows by clicking anywhere</p>
               </div>
-              <FormControl>
-                <Switch
-                  checked={options.suppressRowClickSelection !== true}
-                  onCheckedChange={(checked) => updateOptions("suppressRowClickSelection", !checked)}
-                />
-              </FormControl>
-            </FormItem>
+              <Switch
+                checked={options.suppressRowClickSelection !== true}
+                onCheckedChange={(checked) => updateOptions("suppressRowClickSelection", !checked)}
+              />
+            </div>
 
             {options.rowSelection === "multiple" && (
               <>
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">
-                      Row Multi-Select with Click
-                    </FormLabel>
-                    <FormDescription>
-                      Select multiple rows without Ctrl key
-                    </FormDescription>
+                    <Label className="text-base">Multi Row Selection</Label>
+                    <p className="text-sm text-muted-foreground">Select multiple rows without Ctrl key</p>
                   </div>
-                  <FormControl>
-                    <Switch
-                      checked={options.rowMultiSelectWithClick === true}
-                      onCheckedChange={(checked) => updateOptions("rowMultiSelectWithClick", checked)}
-                    />
-                  </FormControl>
-                </FormItem>
+                  <Switch
+                    checked={options.multiRowSelection === true}
+                    onCheckedChange={(checked) => updateOptions("multiRowSelection", checked)}
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="rowDeselection">Row Deselection</Label>
@@ -114,22 +101,16 @@ export function SelectionSettings({ options, updateOptions }: SelectionSettingsP
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Row Highlight
-            </FormLabel>
-            <FormDescription>
-              Highlight selected rows
-            </FormDescription>
+            <Label className="text-base">Row Highlight</Label>
+            <p className="text-sm text-muted-foreground">Highlight selected rows</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.suppressRowHighlight !== true}
-              onCheckedChange={(checked) => updateOptions("suppressRowHighlight", !checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.suppressRowHighlight !== true}
+            onCheckedChange={(checked) => updateOptions("suppressRowHighlight", !checked)}
+          />
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="rowStyle">Row Selection Style</Label>
@@ -161,58 +142,40 @@ export function SelectionSettings({ options, updateOptions }: SelectionSettingsP
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Checkbox Selection
-            </FormLabel>
-            <FormDescription>
-              Show checkboxes for selection
-            </FormDescription>
+            <Label className="text-base">Checkbox Selection</Label>
+            <p className="text-sm text-muted-foreground">Show checkboxes for selection</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.checkboxSelection === true}
-              onCheckedChange={(checked) => updateOptions("checkboxSelection", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.checkboxSelection === true}
+            onCheckedChange={(checked) => updateOptions("checkboxSelection", checked)}
+          />
+        </div>
 
         {options.checkboxSelection && (
           <>
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">
-                  Header Checkbox
-                </FormLabel>
-                <FormDescription>
-                  Show checkbox in header
-                </FormDescription>
+                <Label className="text-base">Header Checkbox</Label>
+                <p className="text-sm text-muted-foreground">Show checkbox in header</p>
               </div>
-              <FormControl>
-                <Switch
-                  checked={options.headerCheckboxSelection === true}
-                  onCheckedChange={(checked) => updateOptions("headerCheckboxSelection", checked)}
-                />
-              </FormControl>
-            </FormItem>
+              <Switch
+                checked={options.headerCheckboxSelection === true}
+                onCheckedChange={(checked) => updateOptions("headerCheckboxSelection", checked)}
+              />
+            </div>
 
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">
-                  Header Checkbox Selection Filtered Only
-                </FormLabel>
-                <FormDescription>
-                  Header checkbox selects only filtered rows
-                </FormDescription>
+                <Label className="text-base">Header Checkbox Selection Filtered Only</Label>
+                <p className="text-sm text-muted-foreground">Header checkbox selects only filtered rows</p>
               </div>
-              <FormControl>
-                <Switch
-                  checked={options.headerCheckboxSelectionFilteredOnly === true}
-                  onCheckedChange={(checked) => updateOptions("headerCheckboxSelectionFilteredOnly", checked)}
-                />
-              </FormControl>
-            </FormItem>
+              <Switch
+                checked={options.headerCheckboxSelectionFilteredOnly === true}
+                onCheckedChange={(checked) => updateOptions("headerCheckboxSelectionFilteredOnly", checked)}
+              />
+            </div>
           </>
         )}
       </div>

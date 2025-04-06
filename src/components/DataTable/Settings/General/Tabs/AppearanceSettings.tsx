@@ -22,73 +22,49 @@ export function AppearanceSettings({ options, updateOptions }: AppearanceSetting
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Borders
-            </FormLabel>
-            <FormDescription>
-              Show borders around cells
-            </FormDescription>
+            <Label className="text-base">Borders</Label>
+            <p className="text-sm text-muted-foreground">Show borders around cells</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.suppressCellBorders !== true}
-              onCheckedChange={(checked) => updateOptions("suppressCellBorders", !checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.suppressCellBorders !== true}
+            onCheckedChange={(checked) => updateOptions("suppressCellBorders", !checked)}
+          />
+        </div>
 
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Header Borders
-            </FormLabel>
-            <FormDescription>
-              Show borders around headers
-            </FormDescription>
+            <Label className="text-base">Header Borders</Label>
+            <p className="text-sm text-muted-foreground">Show borders around headers</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.suppressHeaderBorders !== true}
-              onCheckedChange={(checked) => updateOptions("suppressHeaderBorders", !checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.suppressHeaderBorders !== true}
+            onCheckedChange={(checked) => updateOptions("suppressHeaderBorders", !checked)}
+          />
+        </div>
 
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Row Hover Effect
-            </FormLabel>
-            <FormDescription>
-              Highlight rows on hover
-            </FormDescription>
+            <Label className="text-base">Row Hover Effect</Label>
+            <p className="text-sm text-muted-foreground">Highlight rows on hover</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.suppressRowHoverHighlight !== true}
-              onCheckedChange={(checked) => updateOptions("suppressRowHoverHighlight", !checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.suppressRowHoverHighlight !== true}
+            onCheckedChange={(checked) => updateOptions("suppressRowHoverHighlight", !checked)}
+          />
+        </div>
 
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Cell Flash on Change
-            </FormLabel>
-            <FormDescription>
-              Flash cells when data changes
-            </FormDescription>
+            <Label className="text-base">Cell Flash on Change</Label>
+            <p className="text-sm text-muted-foreground">Flash cells when data changes</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.enableCellChangeFlash === true}
-              onCheckedChange={(checked) => updateOptions("enableCellChangeFlash", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.enableCellChangeFlash === true}
+            onCheckedChange={(checked) => updateOptions("enableCellChangeFlash", checked)}
+          />
+        </div>
       </div>
 
       <Separator />
@@ -169,22 +145,16 @@ export function AppearanceSettings({ options, updateOptions }: AppearanceSetting
           </p>
         </div>
 
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Auto Size Columns
-            </FormLabel>
-            <FormDescription>
-              Automatically size columns to fit content
-            </FormDescription>
+            <Label className="text-base">Auto Size Columns</Label>
+            <p className="text-sm text-muted-foreground">Automatically size columns to fit content</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.autoSizeColumns === true}
-              onCheckedChange={(checked) => updateOptions("autoSizeColumns", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.autoSizeStrategy !== undefined}
+            onCheckedChange={(checked) => updateOptions("autoSizeStrategy", checked ? { type: 'fitCellContents' } : undefined)}
+          />
+        </div>
       </div>
     </div>
   );

@@ -26,13 +26,13 @@ import { Form } from "@/components/ui/form";
 import { useGrid } from "../../hooks/useGridStore";
 
 // Import settings tabs
-import { AppearanceSettings } from "./Tabs/AppearanceSettingsNew";
-import { BehaviorSettings } from "./Tabs/BehaviorSettingsNew";
+import { AppearanceSettings } from "./Tabs/AppearanceSettings";
+import { BehaviorSettings } from "./Tabs/BehaviorSettings";
 import { RowSettings } from "./Tabs/RowSettings";
 import { ColumnSettings } from "./Tabs/ColumnSettings";
 import { PaginationSettings } from "./Tabs/PaginationSettings";
-import { SelectionSettings } from "./Tabs/SelectionSettingsNew";
-import { GroupingSettings } from "./Tabs/GroupingSettingsNew";
+import { SelectionSettings } from "./Tabs/SelectionSettings";
+import { GroupingSettings } from "./Tabs/GroupingSettings";
 import { AccessoriesSettings } from "./Tabs/AccessoriesSettings";
 
 interface GeneralSettingsDialogProps {
