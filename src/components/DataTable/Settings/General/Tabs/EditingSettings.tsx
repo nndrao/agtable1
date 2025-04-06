@@ -18,7 +18,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
           Configure how cell editing is triggered and behaves.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="editType">Edit Type</Label>
@@ -39,7 +39,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             How editing is triggered in the grid
           </p>
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Single Click Edit</Label>
@@ -50,7 +50,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("singleClickEdit", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Suppress Click Edit</Label>
@@ -61,7 +61,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("suppressClickEdit", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Stop Editing When Grid Loses Focus</Label>
@@ -72,7 +72,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("stopEditingWhenCellsLoseFocus", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Enable Cell Editing on Backspace</Label>
@@ -83,7 +83,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("enableCellEditingOnBackspace", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Read Only Edit</Label>
@@ -95,16 +95,16 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
           />
         </div>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h3 className="text-lg font-medium">Navigation & Keyboard</h3>
         <p className="text-sm text-muted-foreground">
           Configure keyboard navigation during editing.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
@@ -116,7 +116,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("enterMovesDown", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Enter Moves Down After Edit</Label>
@@ -127,7 +127,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("enterMovesDownAfterEdit", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Enter Navigates Vertically</Label>
@@ -138,7 +138,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("enterNavigatesVertically", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Enter Navigates Vertically After Edit</Label>
@@ -149,17 +149,28 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("enterNavigatesVerticallyAfterEdit", checked)}
           />
         </div>
+
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base">Arrow Keys Navigate After Edit</Label>
+            <p className="text-sm text-muted-foreground">Move to next cell when using arrow keys during edit</p>
+          </div>
+          <Switch
+            checked={options.arrowKeysNavigateAfterEdit === true}
+            onCheckedChange={(checked) => updateOptions("arrowKeysNavigateAfterEdit", checked)}
+          />
+        </div>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h3 className="text-lg font-medium">Undo / Redo</h3>
         <p className="text-sm text-muted-foreground">
           Configure undo and redo functionality for cell editing.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
@@ -171,7 +182,7 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
             onCheckedChange={(checked) => updateOptions("undoRedoCellEditing", checked)}
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="undoRedoLimit">Undo / Redo Stack Size</Label>
           <Input

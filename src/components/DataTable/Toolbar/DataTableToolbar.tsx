@@ -45,7 +45,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 interface DataTableToolbarProps {
-  onColumnSettingsOpen: () => void;
+
   selectedFont: { name: string; value: string };
   setSelectedFont: (font: { name: string; value: string }) => void;
   monospacefonts: Array<{ name: string; value: string }>;
@@ -65,7 +65,7 @@ interface DataTableToolbarProps {
 }
 
 export function DataTableToolbar({
-  onColumnSettingsOpen,
+
   selectedFont,
   setSelectedFont,
   monospacefonts,
@@ -319,10 +319,6 @@ export function DataTableToolbar({
               <DropdownMenuLabel>Settings</DropdownMenuLabel>
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onClick={onColumnSettingsOpen}>
-                <Columns className="mr-2 h-4 w-4" />
-                <span>Column Settings</span>
-              </DropdownMenuItem>
 
               {onGeneralSettings && (
                 <DropdownMenuItem onClick={onGeneralSettings}>

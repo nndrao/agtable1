@@ -38,6 +38,7 @@ export interface GridSettings {
   suppressClickEdit: boolean;
   enterMovesDown: boolean;
   enterMovesDownAfterEdit: boolean;
+  arrowKeysNavigateAfterEdit: boolean;
   undoRedoCellEditing: boolean;
   undoRedoCellEditingLimit: number;
 

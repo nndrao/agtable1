@@ -1,9 +1,9 @@
 import { useRef, useCallback, useMemo, useEffect, useState } from "react";
-import { ModuleRegistry, ColDef, GridOptions } from "ag-grid-community";
+import { ModuleRegistry, ColDef, GridOptions, SuppressKeyboardEventParams } from "ag-grid-community";
 import { AllEnterpriseModule } from "ag-grid-enterprise";
 import { AgGridReact } from "ag-grid-react";
 import { DataTableToolbar } from "./Toolbar/DataTableToolbar";
-import { ColumnSettingsDialog } from "./Settings/ColumnSettings/ColumnSettingsDialog";
+
 import { ProfilesDialog } from "./Settings/Profiles/ProfilesDialog";
 import { GeneralSettingsDialog } from "./Settings/General/GeneralSettingsDialog";
 import { useThemeSync } from "./hooks/useThemeSync";
@@ -57,7 +57,6 @@ export function DataTable({
   } = useGrid();
 
   // Local state for UI components
-  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [profilesDialogOpen, setProfilesDialogOpen] = useState(false);
   const [generalSettingsOpen, setGeneralSettingsOpen] = useState(false);
   const [gridReady, setGridReady] = useState(false);
@@ -174,12 +173,23 @@ export function DataTable({
       }
     };
 
+    // Debug keyboard events at the DOM level
+    const handleKeyDown = (event: KeyboardEvent) => {
+      console.log('DOM keydown event:', {
+        key: event.key,
+        target: event.target instanceof HTMLElement ? event.target.tagName : 'unknown',
+        isEditing: Boolean(gridRef.current?.api?.getEditingCells()?.length)
+      });
+    };
+
     gridElement.addEventListener('spacing-change-complete', handleSpacingChangeComplete);
     gridElement.addEventListener('fontsize-change-complete', handleFontSizeChangeComplete);
+    gridElement.addEventListener('keydown', handleKeyDown);
 
     return () => {
       gridElement.removeEventListener('spacing-change-complete', handleSpacingChangeComplete);
       gridElement.removeEventListener('fontsize-change-complete', handleFontSizeChangeComplete);
+      gridElement.removeEventListener('keydown', handleKeyDown);
     };
   }, [gridId]);
 
@@ -269,6 +279,34 @@ export function DataTable({
     if (gridRef.current?.api && gridOptions) {
       // Use our utility function to apply grid options
       applyGridOptions(gridRef, gridId, gridOptions);
+
+      // Add event listeners for debugging
+      gridRef.current.api.addEventListener('cellKeyDown', (params: any) => {
+        if (params.event && 'key' in params.event) {
+          console.log('cellKeyDown event:', {
+            key: params.event.key,
+            editing: Boolean(gridRef.current?.api?.getEditingCells()?.length),
+            cell: params.column ? `${params.column.getId()}:${params.rowIndex}` : 'unknown'
+          });
+        }
+      });
+
+      // Track editing state
+      gridRef.current.api.addEventListener('cellEditingStarted', (params: any) => {
+        console.log('cellEditingStarted:', {
+          cell: params.column ? `${params.column.getId()}:${params.rowIndex}` : 'unknown',
+          value: params.value
+        });
+      });
+
+      gridRef.current.api.addEventListener('cellEditingStopped', (params: any) => {
+        console.log('cellEditingStopped:', {
+          cell: params.column ? `${params.column.getId()}:${params.rowIndex}` : 'unknown',
+          oldValue: params.oldValue,
+          newValue: params.value,
+          cancelled: params.valueChanged === false
+        });
+      });
     }
   }, [gridId, gridOptions, gridRef]);
 
@@ -318,13 +356,69 @@ export function DataTable({
     selectProfile(id);
   }, [selectProfile]);
 
+  // Handle keyboard events, especially arrow keys during editing
+  const suppressKeyboardEvent = useCallback((params: SuppressKeyboardEventParams) => {
+    const { event, editing, api } = params;
+    console.log('suppressKeyboardEvent called:', {
+      key: event.key,
+      editing,
+      type: event.type,
+      target: event.target instanceof HTMLElement ? event.target.tagName : 'unknown'
+    });
+
+    // Handle arrow keys during editing
+    if (editing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      // Check if arrow key navigation after edit is enabled in grid options
+      const arrowKeysNavigateAfterEdit = gridOptions?.arrowKeysNavigateAfterEdit === true;
+      console.log('arrowKeysNavigateAfterEdit enabled:', arrowKeysNavigateAfterEdit);
+
+      // If the feature is disabled, don't suppress the event
+      if (!arrowKeysNavigateAfterEdit) {
+        console.log('Feature disabled, not handling arrow keys');
+        return false;
+      }
+
+      // Stop editing and save changes
+      console.log('Stopping edit and saving changes');
+      api.stopEditing();
+
+      // Get the current focused cell
+      const focusedCell = api.getFocusedCell();
+      if (!focusedCell) {
+        console.log('No focused cell found');
+        return true; // Suppress the event anyway
+      }
+
+      console.log('Current focused cell:', focusedCell);
+
+      // Calculate the next row index
+      const nextRowIndex = event.key === 'ArrowUp' ?
+        focusedCell.rowIndex - 1 :
+        focusedCell.rowIndex + 1;
+
+      console.log('Moving to row:', nextRowIndex);
+
+      // Set focus to the next cell
+      setTimeout(() => {
+        api.setFocusedCell(nextRowIndex, focusedCell.column);
+      }, 0);
+
+      // Suppress the default event
+      return true;
+    }
+
+    // Don't suppress other events
+    return false;
+  }, [gridOptions]);
+
+  // We're now handling arrow key navigation in suppressKeyboardEvent instead
+
   return (
     <div
       className={`flex h-full flex-col rounded-md border bg-card ${darkMode ? 'dark' : 'light'}`}
       data-theme={darkMode ? 'dark' : 'light'}
     >
       <DataTableToolbar
-        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         selectedFont={selectedFont}
         setSelectedFont={handleFontChangeCallback}
         monospacefonts={monospacefonts}
@@ -351,7 +445,10 @@ export function DataTable({
             theme={gridTheme}
             columnDefs={columnDefs}
             rowData={rowData}
-            defaultColDef={defaultColDef}
+            defaultColDef={{
+              ...defaultColDef,
+              suppressKeyboardEvent: suppressKeyboardEvent
+            }}
             sideBar={true}
             domLayout="normal"
             className="h-full w-full"
@@ -365,13 +462,6 @@ export function DataTable({
         )}
       </div>
 
-      {gridReady && (
-        <ColumnSettingsDialog
-          open={columnSettingsOpen}
-          onOpenChange={setColumnSettingsOpen}
-          gridRef={gridRef}
-        />
-      )}
 
       <ProfilesDialog
         open={profilesDialogOpen}
