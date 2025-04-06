@@ -1,7 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 
 interface BehaviorSettingsProps {
@@ -18,121 +17,63 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
           Configure how users interact with the grid.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Enable Cell Text Selection
-            </FormLabel>
-            <FormDescription>
-              Allow users to select and copy cell text
-            </FormDescription>
+            <Label className="text-base">Enable Cell Text Selection</Label>
+            <p className="text-sm text-muted-foreground">Allow users to select and copy cell text</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.enableCellTextSelection === true}
-              onCheckedChange={(checked) => updateOptions("enableCellTextSelection", checked)}
-            />
-          </FormControl>
-        </FormItem>
-        
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+          <Switch
+            checked={options.enableCellTextSelection === true}
+            onCheckedChange={(checked) => updateOptions("enableCellTextSelection", checked)}
+          />
+        </div>
+
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Enable Range Selection
-            </FormLabel>
-            <FormDescription>
-              Allow selecting ranges of cells
-            </FormDescription>
+            <Label className="text-base">Enable Range Selection</Label>
+            <p className="text-sm text-muted-foreground">Allow selecting ranges of cells</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.enableRangeSelection === true}
-              onCheckedChange={(checked) => updateOptions("enableRangeSelection", checked)}
-            />
-          </FormControl>
-        </FormItem>
-        
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Enable Cell Editing
-            </FormLabel>
-            <FormDescription>
-              Allow editing cell values
-            </FormDescription>
-          </div>
-          <FormControl>
-            <Switch
-              checked={options.suppressCellEdit !== true}
-              onCheckedChange={(checked) => updateOptions("suppressCellEdit", !checked)}
-            />
-          </FormControl>
-        </FormItem>
-        
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Stop Editing When Grid Loses Focus
-            </FormLabel>
-            <FormDescription>
-              Exit edit mode when clicking outside
-            </FormDescription>
-          </div>
-          <FormControl>
-            <Switch
-              checked={options.stopEditingWhenCellsLoseFocus === true}
-              onCheckedChange={(checked) => updateOptions("stopEditingWhenCellsLoseFocus", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.enableRangeSelection === true}
+            onCheckedChange={(checked) => updateOptions("enableRangeSelection", checked)}
+          />
+        </div>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h3 className="text-lg font-medium">Navigation & Keyboard</h3>
         <p className="text-sm text-muted-foreground">
           Configure keyboard navigation and shortcuts.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Enable Cell Navigation
-            </FormLabel>
-            <FormDescription>
-              Navigate cells with keyboard
-            </FormDescription>
+            <Label className="text-base">Enable Cell Navigation</Label>
+            <p className="text-sm text-muted-foreground">Navigate cells with keyboard</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.suppressCellNavigation !== true}
-              onCheckedChange={(checked) => updateOptions("suppressCellNavigation", !checked)}
-            />
-          </FormControl>
-        </FormItem>
-        
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+          <Switch
+            checked={options.suppressCellNavigation !== true}
+            onCheckedChange={(checked) => updateOptions("suppressCellNavigation", !checked)}
+          />
+        </div>
+
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Navigate After Tab
-            </FormLabel>
-            <FormDescription>
-              Move to next cell after Tab key
-            </FormDescription>
+            <Label className="text-base">Navigate After Tab</Label>
+            <p className="text-sm text-muted-foreground">Move to next cell after Tab key</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.tabToNextCell === true}
-              onCheckedChange={(checked) => updateOptions("tabToNextCell", checked)}
-            />
-          </FormControl>
-        </FormItem>
-        
+          <Switch
+            checked={options.tabToNextCell === true}
+            onCheckedChange={(checked) => updateOptions("tabToNextCell", checked)}
+          />
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="navigateToNextCell">Tab Navigation Direction</Label>
           <Select
@@ -151,69 +92,40 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             What happens when tabbing at the last cell
           </p>
         </div>
-        
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Enter Moves Down
-            </FormLabel>
-            <FormDescription>
-              Move down after pressing Enter
-            </FormDescription>
-          </div>
-          <FormControl>
-            <Switch
-              checked={options.enterMovesDown === true}
-              onCheckedChange={(checked) => updateOptions("enterMovesDown", checked)}
-            />
-          </FormControl>
-        </FormItem>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h3 className="text-lg font-medium">Performance</h3>
         <p className="text-sm text-muted-foreground">
           Configure options that affect grid performance.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Suppress Column Virtualization
-            </FormLabel>
-            <FormDescription>
-              Render all columns at once
-            </FormDescription>
+            <Label className="text-base">Suppress Column Virtualization</Label>
+            <p className="text-sm text-muted-foreground">Render all columns at once</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.suppressColumnVirtualisation === true}
-              onCheckedChange={(checked) => updateOptions("suppressColumnVirtualisation", checked)}
-            />
-          </FormControl>
-        </FormItem>
-        
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+          <Switch
+            checked={options.suppressColumnVirtualisation === true}
+            onCheckedChange={(checked) => updateOptions("suppressColumnVirtualisation", checked)}
+          />
+        </div>
+
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Cache Quick Filter
-            </FormLabel>
-            <FormDescription>
-              Improve filter performance
-            </FormDescription>
+            <Label className="text-base">Cache Quick Filter</Label>
+            <p className="text-sm text-muted-foreground">Improve filter performance</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.cacheQuickFilter === true}
-              onCheckedChange={(checked) => updateOptions("cacheQuickFilter", checked)}
-            />
-          </FormControl>
-        </FormItem>
-        
+          <Switch
+            checked={options.cacheQuickFilter === true}
+            onCheckedChange={(checked) => updateOptions("cacheQuickFilter", checked)}
+          />
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="rowModelType">Row Model Type</Label>
           <Select
@@ -234,23 +146,17 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             How data is loaded and managed
           </p>
         </div>
-        
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Ensure DOM Order
-            </FormLabel>
-            <FormDescription>
-              Maintain DOM order for accessibility
-            </FormDescription>
+            <Label className="text-base">Ensure DOM Order</Label>
+            <p className="text-sm text-muted-foreground">Maintain DOM order for accessibility</p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.ensureDomOrder === true}
-              onCheckedChange={(checked) => updateOptions("ensureDomOrder", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.ensureDomOrder === true}
+            onCheckedChange={(checked) => updateOptions("ensureDomOrder", checked)}
+          />
+        </div>
       </div>
     </div>
   );

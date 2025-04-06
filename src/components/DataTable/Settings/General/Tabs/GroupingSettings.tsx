@@ -1,7 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 
@@ -21,22 +20,20 @@ export function GroupingSettings({ options, updateOptions }: GroupingSettingsPro
       </div>
       
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
+            <Label className="text-base">
               Enable Row Grouping
-            </FormLabel>
-            <FormDescription>
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Allow grouping rows by column values
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.groupUseEntireRow !== false}
-              onCheckedChange={(checked) => updateOptions("groupUseEntireRow", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.groupUseEntireRow !== false}
+            onCheckedChange={(checked) => updateOptions("groupUseEntireRow", checked)}
+          />
+        </div>
         
         <div className="space-y-2">
           <Label htmlFor="rowGroupPanelShow">Row Group Panel</Label>
@@ -58,39 +55,35 @@ export function GroupingSettings({ options, updateOptions }: GroupingSettingsPro
           </p>
         </div>
         
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
+            <Label className="text-base">
               Group Multi Auto Column
-            </FormLabel>
-            <FormDescription>
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Create auto columns for each group level
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.groupMultiAutoColumn === true}
-              onCheckedChange={(checked) => updateOptions("groupMultiAutoColumn", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.groupMultiAutoColumn === true}
+            onCheckedChange={(checked) => updateOptions("groupMultiAutoColumn", checked)}
+          />
+        </div>
         
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Group Suppress Auto Column
-            </FormLabel>
-            <FormDescription>
+            <Label className="text-base">
+              Suppress Auto Group Column
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Don't create auto group columns
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.groupSuppressAutoColumn === true}
-              onCheckedChange={(checked) => updateOptions("groupSuppressAutoColumn", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.suppressAutoColumn === true}
+            onCheckedChange={(checked) => updateOptions("suppressAutoColumn", checked)}
+          />
+        </div>
       </div>
       
       <Separator />
@@ -103,22 +96,20 @@ export function GroupingSettings({ options, updateOptions }: GroupingSettingsPro
       </div>
       
       <div className="grid grid-cols-2 gap-4">
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
+            <Label className="text-base">
               Group Row Inner Renderer
-            </FormLabel>
-            <FormDescription>
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Use custom renderer for group rows
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.groupRowInnerRenderer !== undefined}
-              onCheckedChange={(checked) => updateOptions("groupRowInnerRenderer", checked ? "default" : undefined)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.groupRowInnerRenderer !== undefined}
+            onCheckedChange={(checked) => updateOptions("groupRowInnerRenderer", checked ? "default" : undefined)}
+          />
+        </div>
         
         <div className="space-y-2">
           <Label htmlFor="groupDefaultExpanded">Default Expanded Level</Label>
@@ -135,39 +126,35 @@ export function GroupingSettings({ options, updateOptions }: GroupingSettingsPro
           </p>
         </div>
         
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
+            <Label className="text-base">
               Group Hide Open Parents
-            </FormLabel>
-            <FormDescription>
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Hide parent rows when expanded
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.groupHideOpenParents === true}
-              onCheckedChange={(checked) => updateOptions("groupHideOpenParents", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.groupHideOpenParents === true}
+            onCheckedChange={(checked) => updateOptions("groupHideOpenParents", checked)}
+          />
+        </div>
         
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Group Remove Single Children
-            </FormLabel>
-            <FormDescription>
+            <Label className="text-base">
+              Hide Parent of Single Child
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Remove groups with only one child
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.groupRemoveSingleChildren === true}
-              onCheckedChange={(checked) => updateOptions("groupRemoveSingleChildren", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.groupHideParentOfSingleChild === true}
+            onCheckedChange={(checked) => updateOptions("groupHideParentOfSingleChild", checked)}
+          />
+        </div>
       </div>
       
       <Separator />
@@ -216,39 +203,35 @@ export function GroupingSettings({ options, updateOptions }: GroupingSettingsPro
           </p>
         </div>
         
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
+            <Label className="text-base">
               Group Include Footer
-            </FormLabel>
-            <FormDescription>
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Show footer for each group
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.groupIncludeFooter === true}
-              onCheckedChange={(checked) => updateOptions("groupIncludeFooter", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.groupIncludeFooter === true}
+            onCheckedChange={(checked) => updateOptions("groupIncludeFooter", checked)}
+          />
+        </div>
         
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <FormLabel className="text-base">
-              Group Show Row Group Column
-            </FormLabel>
-            <FormDescription>
+            <Label className="text-base">
+              Show Row Group Column
+            </Label>
+            <p className="text-sm text-muted-foreground">
               Show column that was used for grouping
-            </FormDescription>
+            </p>
           </div>
-          <FormControl>
-            <Switch
-              checked={options.showRowGroupColumn !== false}
-              onCheckedChange={(checked) => updateOptions("showRowGroupColumn", checked)}
-            />
-          </FormControl>
-        </FormItem>
+          <Switch
+            checked={options.showRowGroupColumn !== false}
+            onCheckedChange={(checked) => updateOptions("showRowGroupColumn", checked)}
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,50 +1,78 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Settings,
+  Palette,
+  Sliders,
+  LayoutGrid,
+  Rows,
+  FileText,
+  MousePointer,
+  Group,
+  Package,
+  X,
+  Info,
+  Edit
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Form } from "@/components/ui/form";
 import { useGrid } from "../../hooks/useGridStore";
+import { cn } from "@/lib/utils";
 
 // Import settings tabs
-import { AppearanceSettings } from "./Tabs/AppearanceSettingsNew";
-import { BehaviorSettings } from "./Tabs/BehaviorSettingsNew";
+import { AppearanceSettings } from "./Tabs/AppearanceSettings";
+import { BehaviorSettings } from "./Tabs/BehaviorSettings";
 import { RowSettings } from "./Tabs/RowSettings";
 import { ColumnSettings } from "./Tabs/ColumnSettings";
 import { PaginationSettings } from "./Tabs/PaginationSettings";
-import { SelectionSettings } from "./Tabs/SelectionSettingsNew";
-import { GroupingSettings } from "./Tabs/GroupingSettingsNew";
+import { SelectionSettings } from "./Tabs/SelectionSettings";
+import { GroupingSettings } from "./Tabs/GroupingSettings";
 import { AccessoriesSettings } from "./Tabs/AccessoriesSettings";
+import { EditingSettings } from "./Tabs/EditingSettings";
 
 interface GeneralSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+type TabType =
+  | "appearance"
+  | "behavior"
+  | "rows"
+  | "columns"
+  | "pagination"
+  | "selection"
+  | "grouping"
+  | "accessories"
+  | "editing";
+
+interface SidebarItem {
+  id: TabType;
+  label: string;
+  icon: React.ElementType;
+}
+
+const sidebarItems: SidebarItem[] = [
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "behavior", label: "Behavior", icon: Sliders },
+  { id: "rows", label: "Rows", icon: Rows },
+  { id: "columns", label: "Columns", icon: LayoutGrid },
+  { id: "pagination", label: "Pagination", icon: FileText },
+  { id: "selection", label: "Selection", icon: MousePointer },
+  { id: "editing", label: "Editing", icon: Edit },
+  { id: "grouping", label: "Grouping", icon: Group },
+  { id: "accessories", label: "Accessories", icon: Package },
+];
+
 export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDialogProps) {
   const { gridOptions, setGridOptions } = useGrid();
-
-  // State for reset confirmation dialog
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("appearance");
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Initialize form with current grid options
   const form = useForm({
@@ -59,6 +87,7 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
     if (open) {
       form.reset(gridOptions || {});
       setFormValues(gridOptions || {});
+      setHasChanges(false);
     }
   }, [open, gridOptions, form]);
 
@@ -66,6 +95,7 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
   useEffect(() => {
     const subscription = form.watch((value) => {
       setFormValues(value);
+      setHasChanges(true);
     });
     return () => subscription.unsubscribe();
   }, [form]);
@@ -75,6 +105,7 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
     console.log('Submitting form with data:', data);
     // Update the grid options in the store
     setGridOptions(data);
+    setHasChanges(false);
     onOpenChange(false);
   };
 
@@ -86,17 +117,22 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
   };
 
   // Handle reset to defaults
-  const handleResetClick = () => {
-    // Open confirmation dialog
-    setResetDialogOpen(true);
-  };
+  const handleReset = () => {
+    const defaultValues = {
+      rowHeight: 25,
+      headerHeight: 25,
+      domLayout: "normal",
+      suppressCellBorders: false,
+      suppressHeaderBorders: false,
+      suppressRowHoverHighlight: false,
+      enableCellChangeFlash: true,
+      autoSizeStrategy: { type: 'fitCellContents' },
+      animateRows: true,
+    };
 
-  // Handle confirmed reset
-  const handleResetConfirm = () => {
-    // Reset form to default values
-    form.reset({});
-    setFormValues({});
-    setResetDialogOpen(false);
+    form.reset(defaultValues);
+    setFormValues(defaultValues);
+    setHasChanges(true);
   };
 
   // Update form values
@@ -137,121 +173,154 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Grid Settings</DialogTitle>
-          <DialogDescription>
-            Customize the behavior and appearance of the grid. Changes will be applied when you save.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-[1000px] p-0 gap-0 bg-[#0f1623] text-white border-zinc-700 rounded-lg overflow-hidden flex flex-col">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between bg-[#151d2c] px-4 py-3 border-b border-zinc-700 z-10">
+          <div className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-blue-400" />
+            <span className="text-lg font-semibold">Grid Settings</span>
+          </div>
+          <div className="flex items-center">
+            <div className="flex space-x-1">
+              <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+              <div className="h-3 w-3 rounded-full bg-purple-500"></div>
+              <div className="h-3 w-3 rounded-full bg-green-500"></div>
+            </div>
+            <button
+              className="ml-4 p-1 hover:bg-zinc-700 rounded-sm transition-colors"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-            <Tabs defaultValue="appearance" className="flex-1 overflow-hidden">
-              <TabsList className="grid grid-cols-8 mb-4">
-                <TabsTrigger value="appearance">Appearance</TabsTrigger>
-                <TabsTrigger value="behavior">Behavior</TabsTrigger>
-                <TabsTrigger value="rows">Rows</TabsTrigger>
-                <TabsTrigger value="columns">Columns</TabsTrigger>
-                <TabsTrigger value="pagination">Pagination</TabsTrigger>
-                <TabsTrigger value="selection">Selection</TabsTrigger>
-                <TabsTrigger value="grouping">Grouping</TabsTrigger>
-                <TabsTrigger value="accessories">Accessories</TabsTrigger>
-              </TabsList>
+        {/* Main Content Area */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar - No longer contains presets */}
+          <div className="w-48 border-r border-zinc-700 bg-[#0f1623] overflow-y-auto">
+            {sidebarItems.map((item) => (
+              <button
+                key={item.id}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 w-full text-left transition-colors",
+                  activeTab === item.id
+                    ? "bg-blue-500/10 border-l-2 border-blue-500 text-blue-400"
+                    : "border-l-2 border-transparent hover:bg-zinc-800"
+                )}
+                onClick={() => setActiveTab(item.id)}
+              >
+                <item.icon className={cn(
+                  "h-5 w-5",
+                  activeTab === item.id ? "text-blue-400" : "text-zinc-400"
+                )} />
+                <span className="text-sm">{item.label}</span>
+              </button>
+            ))}
+          </div>
 
-              <ScrollArea className="flex-1 pr-4" style={{ height: "calc(70vh - 200px)" }}>
-                <TabsContent value="appearance" className="mt-0">
-                  <AppearanceSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
+          {/* Content Area with Form */}
+          <div className="flex-1 flex flex-col">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
+                {/* Scrollable Content Area */}
+                <div className="flex-1 overflow-hidden">
+                  <ScrollArea className="h-[calc(600px-85px)]"> {/* Adjust height to account for header and footer */}
+                    <div className="p-6">
+                      {activeTab === "appearance" && (
+                        <AppearanceSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "behavior" && (
+                        <BehaviorSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "rows" && (
+                        <RowSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "columns" && (
+                        <ColumnSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "pagination" && (
+                        <PaginationSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "selection" && (
+                        <SelectionSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "grouping" && (
+                        <GroupingSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "editing" && (
+                        <EditingSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                      {activeTab === "accessories" && (
+                        <AccessoriesSettings
+                          options={formValues}
+                          updateOptions={updateOptions}
+                        />
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
 
-                <TabsContent value="behavior" className="mt-0">
-                  <BehaviorSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
-
-                <TabsContent value="rows" className="mt-0">
-                  <RowSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
-
-                <TabsContent value="columns" className="mt-0">
-                  <ColumnSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
-
-                <TabsContent value="pagination" className="mt-0">
-                  <PaginationSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
-
-                <TabsContent value="selection" className="mt-0">
-                  <SelectionSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
-
-                <TabsContent value="grouping" className="mt-0">
-                  <GroupingSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
-
-                <TabsContent value="accessories" className="mt-0">
-                  <AccessoriesSettings
-                    options={formValues}
-                    updateOptions={updateOptions}
-                  />
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
-
-            <DialogFooter className="pt-4 flex justify-between">
-              <div>
-                <Button type="button" variant="destructive" onClick={handleResetClick}>
-                  Reset to Defaults
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </div>
-            </DialogFooter>
-          </form>
-        </Form>
+                {/* Fixed Footer */}
+                <div className="border-t border-zinc-700 bg-[#151d2c] p-4 flex items-center justify-between z-10">
+                  <div className="text-xs text-zinc-400">
+                    {hasChanges && "Changes will be applied when you save"}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleReset}
+                      className="text-xs bg-transparent border-zinc-600 hover:bg-zinc-700 text-zinc-300"
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancel}
+                      className="text-xs bg-transparent border-zinc-600 hover:bg-zinc-700 text-zinc-300"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={!hasChanges}
+                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </div>
       </DialogContent>
-
-      {/* Reset Confirmation Dialog */}
-      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset to Defaults</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will reset all grid settings to their default values. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Reset
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Dialog>
   );
 }
