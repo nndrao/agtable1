@@ -17,7 +17,7 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
           Configure how users interact with the grid.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
@@ -29,7 +29,7 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             onCheckedChange={(checked) => updateOptions("enableCellTextSelection", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Enable Range Selection</Label>
@@ -40,39 +40,17 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             onCheckedChange={(checked) => updateOptions("enableRangeSelection", checked)}
           />
         </div>
-        
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Enable Cell Editing</Label>
-            <p className="text-sm text-muted-foreground">Allow editing cell values</p>
-          </div>
-          <Switch
-            checked={options.suppressCellEdit !== true}
-            onCheckedChange={(checked) => updateOptions("suppressCellEdit", !checked)}
-          />
-        </div>
-        
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Stop Editing When Grid Loses Focus</Label>
-            <p className="text-sm text-muted-foreground">Exit edit mode when clicking outside</p>
-          </div>
-          <Switch
-            checked={options.stopEditingWhenCellsLoseFocus === true}
-            onCheckedChange={(checked) => updateOptions("stopEditingWhenCellsLoseFocus", checked)}
-          />
-        </div>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h3 className="text-lg font-medium">Navigation & Keyboard</h3>
         <p className="text-sm text-muted-foreground">
           Configure keyboard navigation and shortcuts.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
@@ -84,7 +62,7 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             onCheckedChange={(checked) => updateOptions("suppressCellNavigation", !checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Navigate After Tab</Label>
@@ -95,7 +73,7 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             onCheckedChange={(checked) => updateOptions("tabToNextCell", checked)}
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="navigateToNextCell">Tab Navigation Direction</Label>
           <Select
@@ -114,28 +92,17 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             What happens when tabbing at the last cell
           </p>
         </div>
-        
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Enter Moves Down</Label>
-            <p className="text-sm text-muted-foreground">Move down after pressing Enter</p>
-          </div>
-          <Switch
-            checked={options.enterMovesDown === true}
-            onCheckedChange={(checked) => updateOptions("enterMovesDown", checked)}
-          />
-        </div>
       </div>
-      
+
       <Separator />
-      
+
       <div>
         <h3 className="text-lg font-medium">Performance</h3>
         <p className="text-sm text-muted-foreground">
           Configure options that affect grid performance.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
@@ -147,7 +114,7 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             onCheckedChange={(checked) => updateOptions("suppressColumnVirtualisation", checked)}
           />
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Cache Quick Filter</Label>
@@ -158,7 +125,7 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             onCheckedChange={(checked) => updateOptions("cacheQuickFilter", checked)}
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="rowModelType">Row Model Type</Label>
           <Select
@@ -179,7 +146,7 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
             How data is loaded and managed
           </p>
         </div>
-        
+
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Ensure DOM Order</Label>
