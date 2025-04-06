@@ -1,0 +1,27 @@
+/* Grid Options Styling */
+
+/* Row Hover */
+.ag-theme-quartz.ag-no-row-hover .ag-row:hover {
+  background-color: inherit !important;
+}
+
+/* Row Animation */
+.ag-theme-quartz.ag-no-row-animation .ag-row {
+  transition: none !important;
+}
+
+/* Cell Borders */
+.ag-theme-quartz.ag-no-cell-borders .ag-cell {
+  border: none !important;
+}
+
+/* Header Borders */
+.ag-theme-quartz.ag-no-header-borders .ag-header-cell {
+  border: none !important;
+}
+
+/* Custom Transitions */
+.ag-theme-quartz.ag-no-transitions * {
+  transition: none !important;
+  animation: none !important;
+}
