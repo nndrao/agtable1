@@ -3,7 +3,7 @@ import { ModuleRegistry, ColDef, GridOptions, SuppressKeyboardEventParams } from
 import { AllEnterpriseModule } from "ag-grid-enterprise";
 import { AgGridReact } from "ag-grid-react";
 import { DataTableToolbar } from "./Toolbar/DataTableToolbar";
-import { ColumnSettingsDialog } from "./Settings/ColumnSettings/ColumnSettingsDialog";
+
 import { ProfilesDialog } from "./Settings/Profiles/ProfilesDialog";
 import { GeneralSettingsDialog } from "./Settings/General/GeneralSettingsDialog";
 import { useThemeSync } from "./hooks/useThemeSync";
@@ -57,7 +57,6 @@ export function DataTable({
   } = useGrid();
 
   // Local state for UI components
-  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [profilesDialogOpen, setProfilesDialogOpen] = useState(false);
   const [generalSettingsOpen, setGeneralSettingsOpen] = useState(false);
   const [gridReady, setGridReady] = useState(false);
@@ -420,7 +419,6 @@ export function DataTable({
       data-theme={darkMode ? 'dark' : 'light'}
     >
       <DataTableToolbar
-        onColumnSettingsOpen={() => setColumnSettingsOpen(true)}
         selectedFont={selectedFont}
         setSelectedFont={handleFontChangeCallback}
         monospacefonts={monospacefonts}
@@ -464,13 +462,6 @@ export function DataTable({
         )}
       </div>
 
-      {gridReady && (
-        <ColumnSettingsDialog
-          open={columnSettingsOpen}
-          onOpenChange={setColumnSettingsOpen}
-          gridRef={gridRef}
-        />
-      )}
 
       <ProfilesDialog
         open={profilesDialogOpen}
