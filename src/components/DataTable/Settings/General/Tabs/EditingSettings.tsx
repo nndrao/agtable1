@@ -108,23 +108,23 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <Label className="text-base">Enter Moves Down</Label>
+            <Label className="text-base">Enter Navigates Vertically</Label>
             <p className="text-sm text-muted-foreground">Move down after pressing Enter</p>
           </div>
           <Switch
-            checked={options.enterMovesDown === true}
-            onCheckedChange={(checked) => updateOptions("enterMovesDown", checked)}
+            checked={options.enterNavigatesVertically === true}
+            onCheckedChange={(checked) => updateOptions("enterNavigatesVertically", checked)}
           />
         </div>
 
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <Label className="text-base">Enter Moves Down After Edit</Label>
+            <Label className="text-base">Enter Navigates Vertically After Edit</Label>
             <p className="text-sm text-muted-foreground">Move down after editing with Enter</p>
           </div>
           <Switch
-            checked={options.enterMovesDownAfterEdit === true}
-            onCheckedChange={(checked) => updateOptions("enterMovesDownAfterEdit", checked)}
+            checked={options.enterNavigatesVerticallyAfterEdit === true}
+            onCheckedChange={(checked) => updateOptions("enterNavigatesVerticallyAfterEdit", checked)}
           />
         </div>
 
@@ -152,12 +152,12 @@ export function EditingSettings({ options, updateOptions }: EditingSettingsProps
 
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
-            <Label className="text-base">Arrow Keys Navigate After Edit</Label>
-            <p className="text-sm text-muted-foreground">Move to next cell when using arrow keys during edit</p>
+            <Label className="text-base">Custom Navigation After Edit</Label>
+            <p className="text-sm text-muted-foreground">Use custom navigation when using arrow keys during edit</p>
           </div>
           <Switch
-            checked={options.arrowKeysNavigateAfterEdit === true}
-            onCheckedChange={(checked) => updateOptions("arrowKeysNavigateAfterEdit", checked)}
+            checked={options.useCustomNavigation === true}
+            onCheckedChange={(checked) => updateOptions("useCustomNavigation", checked)}
           />
         </div>
       </div>

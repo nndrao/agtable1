@@ -59,6 +59,7 @@ interface DataTableToolbarProps {
   onSaveProfile?: () => void;
   onManageProfiles?: () => void;
   onGeneralSettings?: () => void;
+  onColumnSettings?: () => void;
   profiles?: Array<{ id: string; name: string; isDefault?: boolean }>;
   selectedProfileId?: string | null;
   onSelectProfile?: (id: string) => void;
@@ -79,6 +80,7 @@ export function DataTableToolbar({
   onSaveProfile,
   onManageProfiles,
   onGeneralSettings,
+  onColumnSettings,
   profiles = [],
   selectedProfileId,
   onSelectProfile,
@@ -250,9 +252,6 @@ export function DataTableToolbar({
                       <DropdownMenuItem
                         key={profile.id}
                         onClick={() => onSelectProfile(profile.id)}
-                        className={cn(
-                          selectedProfileId === profile.id && "bg-accent font-medium"
-                        )}
                       >
                         {selectedProfileId === profile.id && (
                           <Check className="mr-2 h-4 w-4" />
@@ -327,6 +326,13 @@ export function DataTableToolbar({
                 </DropdownMenuItem>
               )}
 
+              {onColumnSettings && (
+                <DropdownMenuItem onClick={onColumnSettings}>
+                  <Columns className="mr-2 h-4 w-4" />
+                  <span>Column Settings</span>
+                </DropdownMenuItem>
+              )}
+
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>
@@ -339,7 +345,6 @@ export function DataTableToolbar({
                     <DropdownMenuSubContent>
                       <DropdownMenuItem
                         onClick={() => handleThemeChange("light")}
-                        className={currentTheme === "light" ? "bg-accent" : ""}
                       >
                         <Sun className="mr-2 h-4 w-4" />
                         <span>Light</span>
@@ -347,7 +352,6 @@ export function DataTableToolbar({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleThemeChange("dark")}
-                        className={currentTheme === "dark" ? "bg-accent" : ""}
                       >
                         <Moon className="mr-2 h-4 w-4" />
                         <span>Dark</span>
@@ -355,7 +359,6 @@ export function DataTableToolbar({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleThemeChange("system")}
-                        className={currentTheme === "system" ? "bg-accent" : ""}
                       >
                         <Laptop className="mr-2 h-4 w-4" />
                         <span>System</span>

@@ -18,31 +18,11 @@ export function AppearanceSettings({ options, updateOptions }: AppearanceSetting
       {/* Theme & Styling Section */}
       <div>
         <h3 className="text-sm font-semibold text-blue-400 mb-4">Theme & Styling</h3>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-row items-center justify-between rounded-md bg-[#151d2c] p-4">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">Borders</Label>
-              <p className="text-xs text-zinc-400">Show borders around cells</p>
-            </div>
-            <Switch
-              checked={options.suppressCellBorders !== true}
-              onCheckedChange={(checked) => updateOptions("suppressCellBorders", !checked)}
-              className="data-[state=checked]:bg-blue-500"
-            />
-          </div>
 
-          <div className="flex flex-row items-center justify-between rounded-md bg-[#151d2c] p-4">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">Header Borders</Label>
-              <p className="text-xs text-zinc-400">Show borders around headers</p>
-            </div>
-            <Switch
-              checked={options.suppressHeaderBorders !== true}
-              onCheckedChange={(checked) => updateOptions("suppressHeaderBorders", !checked)}
-              className="data-[state=checked]:bg-blue-500"
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Removed invalid grid option: suppressCellBorders */}
+
+          {/* Removed invalid grid option: suppressHeaderBorders */}
 
           <div className="flex flex-row items-center justify-between rounded-md bg-[#151d2c] p-4">
             <div className="space-y-1">
@@ -56,24 +36,14 @@ export function AppearanceSettings({ options, updateOptions }: AppearanceSetting
             />
           </div>
 
-          <div className="flex flex-row items-center justify-between rounded-md bg-[#151d2c] p-4">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">Cell Flash on Change</Label>
-              <p className="text-xs text-zinc-400">Flash cells when data changes</p>
-            </div>
-            <Switch
-              checked={options.enableCellChangeFlash === true}
-              onCheckedChange={(checked) => updateOptions("enableCellChangeFlash", checked)}
-              className="data-[state=checked]:bg-blue-500"
-            />
-          </div>
+          {/* Removed invalid grid option: enableCellChangeFlash */}
         </div>
       </div>
 
       {/* Layout & Sizing Section */}
       <div>
         <h3 className="text-sm font-semibold text-blue-400 mb-4">Layout & Sizing</h3>
-        
+
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -120,7 +90,7 @@ export function AppearanceSettings({ options, updateOptions }: AppearanceSetting
               <Label htmlFor="rowHeight" className="text-sm">Row Height (px)</Label>
               <span className="text-sm text-zinc-300 font-mono">{options.rowHeight || 25}</span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <span className="text-xs text-zinc-500">0</span>
               <Slider
@@ -148,7 +118,7 @@ export function AppearanceSettings({ options, updateOptions }: AppearanceSetting
               <Label htmlFor="headerHeight" className="text-sm">Header Height (px)</Label>
               <span className="text-sm text-zinc-300 font-mono">{options.headerHeight || 25}</span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <span className="text-xs text-zinc-500">0</span>
               <Slider
@@ -176,7 +146,7 @@ export function AppearanceSettings({ options, updateOptions }: AppearanceSetting
               <Label htmlFor="animationSpeed" className="text-sm">Animation Speed (ms)</Label>
               <span className="text-sm text-zinc-300 font-mono">{options.animationDuration || 300}</span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <span className="text-xs text-zinc-500">0</span>
               <Slider

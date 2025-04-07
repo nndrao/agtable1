@@ -94,9 +94,9 @@ export function GeneralSettingsDialog({
     editType: 'doubleClick',
     singleClickEdit: false,
     suppressClickEdit: false,
-    enterMovesDown: true,
-    enterMovesDownAfterEdit: true,
-    arrowKeysNavigateAfterEdit: true,
+    enterNavigatesVertically: true,
+    enterNavigatesVerticallyAfterEdit: true,
+    useCustomNavigation: true, // Replaces arrowKeysNavigateAfterEdit
     undoRedoCellEditing: true,
     undoRedoCellEditingLimit: 10,
 

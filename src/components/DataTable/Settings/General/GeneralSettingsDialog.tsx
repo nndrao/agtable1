@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Form } from "@/components/ui/form";
 import { useGrid } from "../../hooks/useGridStore";
 import { cn } from "@/lib/utils";
+import "../settings-dialogs.css";
 
 // Import settings tabs
 import { AppearanceSettings } from "./Tabs/AppearanceSettings";
@@ -122,10 +123,12 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
       rowHeight: 25,
       headerHeight: 25,
       domLayout: "normal",
-      suppressCellBorders: false,
-      suppressHeaderBorders: false,
+      // Remove invalid grid options
+      // suppressCellBorders: false, // Not a valid AG-Grid option
+      // suppressHeaderBorders: false, // Not a valid AG-Grid option
       suppressRowHoverHighlight: false,
-      enableCellChangeFlash: true,
+      // enableCellChangeFlash: true, // Not a valid AG-Grid option
+      // autoSizeAllColumns: false, // Not a valid AG-Grid option
       autoSizeStrategy: { type: 'fitCellContents' },
       animateRows: true,
     };
@@ -173,59 +176,51 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1000px] p-0 gap-0 bg-[#0f1623] text-white border-zinc-700 rounded-lg overflow-hidden flex flex-col">
-        {/* Fixed Header */}
-        <div className="flex items-center justify-between bg-[#151d2c] px-4 py-3 border-b border-zinc-700 z-10">
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-blue-400" />
-            <span className="text-lg font-semibold">Grid Settings</span>
-          </div>
-          <div className="flex items-center">
-            <div className="flex space-x-1">
-              <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-              <div className="h-3 w-3 rounded-full bg-purple-500"></div>
-              <div className="h-3 w-3 rounded-full bg-green-500"></div>
+      <DialogContent className="max-w-[1000px] p-0 gap-0 rounded-lg overflow-hidden general-settings-dialog">
+        {/* The general-settings-dialog class is used to target and hide the default close button with CSS */}
+        <div className="flex flex-col h-[650px] bg-background">
+          {/* Fixed Header */}
+          <div className="flex items-center justify-between bg-muted/30 px-6 py-4 border-b z-10">
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-primary" />
+              <span className="text-lg font-semibold">Grid Settings</span>
             </div>
-            <button
-              className="ml-4 p-1 hover:bg-zinc-700 rounded-sm transition-colors"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar - No longer contains presets */}
-          <div className="w-48 border-r border-zinc-700 bg-[#0f1623] overflow-y-auto">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 w-full text-left transition-colors",
-                  activeTab === item.id
-                    ? "bg-blue-500/10 border-l-2 border-blue-500 text-blue-400"
-                    : "border-l-2 border-transparent hover:bg-zinc-800"
-                )}
-                onClick={() => setActiveTab(item.id)}
-              >
-                <item.icon className={cn(
-                  "h-5 w-5",
-                  activeTab === item.id ? "text-blue-400" : "text-zinc-400"
-                )} />
-                <span className="text-sm">{item.label}</span>
-              </button>
+          {/* Main Content Area */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar */}
+            <div className="w-64 border-r bg-muted/10 overflow-y-auto">
+              {sidebarItems.map((item) => (
+                <button
+                  key={item.id}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 w-full text-left transition-colors",
+                    activeTab === item.id
+                      ? "bg-primary/10 border-l-2 border-primary text-primary"
+                      : "border-l-2 border-transparent hover:bg-muted"
+                  )}
+                  onClick={() => setActiveTab(item.id)}
+                >
+                  <item.icon className={cn(
+                    "h-5 w-5",
+                    activeTab === item.id ? "text-primary" : "text-muted-foreground"
+                  )} />
+                  <span className="text-sm">{item.label}</span>
+                </button>
             ))}
           </div>
 
           {/* Content Area with Form */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col bg-background">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
                 {/* Scrollable Content Area */}
                 <div className="flex-1 overflow-hidden">
-                  <ScrollArea className="h-[calc(600px-85px)]"> {/* Adjust height to account for header and footer */}
+                  <ScrollArea className="h-full">
                     <div className="p-6">
                       {activeTab === "appearance" && (
                         <AppearanceSettings
@@ -286,8 +281,8 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
                 </div>
 
                 {/* Fixed Footer */}
-                <div className="border-t border-zinc-700 bg-[#151d2c] p-4 flex items-center justify-between z-10">
-                  <div className="text-xs text-zinc-400">
+                <div className="border-t bg-muted/30 px-6 py-4 flex items-center justify-between z-10">
+                  <div className="text-xs text-muted-foreground">
                     {hasChanges && "Changes will be applied when you save"}
                   </div>
                   <div className="flex gap-2">
@@ -295,7 +290,8 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
                       type="button"
                       variant="outline"
                       onClick={handleReset}
-                      className="text-xs bg-transparent border-zinc-600 hover:bg-zinc-700 text-zinc-300"
+                      disabled={!hasChanges}
+                      size="sm"
                     >
                       Reset
                     </Button>
@@ -303,14 +299,14 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
                       type="button"
                       variant="outline"
                       onClick={handleCancel}
-                      className="text-xs bg-transparent border-zinc-600 hover:bg-zinc-700 text-zinc-300"
+                      size="sm"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={!hasChanges}
-                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                      size="sm"
                     >
                       Save Changes
                     </Button>
@@ -318,6 +314,7 @@ export function GeneralSettingsDialog({ open, onOpenChange }: GeneralSettingsDia
                 </div>
               </form>
             </Form>
+          </div>
           </div>
         </div>
       </DialogContent>

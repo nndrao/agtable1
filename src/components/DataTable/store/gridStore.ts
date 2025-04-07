@@ -27,6 +27,7 @@ interface GridState {
 
   // Grid state
   columnState: any[];
+  columnDefs: any[];
   filterModel: any;
   sortModel: any;
   gridOptions: any;
@@ -43,6 +44,7 @@ interface GridState {
 
   // Grid state actions
   setColumnState: (columnState: any[]) => void;
+  setColumnDefs: (columnDefs: any[]) => void;
   setFilterModel: (filterModel: any) => void;
   setSortModel: (sortModel: any) => void;
   setGridOptions: (gridOptions: any) => void;
@@ -103,6 +105,7 @@ export const useGridStore = create<GridState>()(
 
       // Grid state actions
       setColumnState: (columnState) => set({ columnState }),
+      setColumnDefs: (columnDefs) => set({ columnDefs }),
       setFilterModel: (filterModel) => set({ filterModel }),
       setSortModel: (sortModel) => set({ sortModel }),
       setGridOptions: (gridOptions) => set({ gridOptions }),
@@ -136,12 +139,33 @@ export const useGridStore = create<GridState>()(
       },
 
       selectProfile: (id) => {
+        console.log('Selecting profile:', id);
+
+        // First, completely reset all state to default values
+        // This ensures no settings from previous profiles leak into the new profile
+        set({
+          // Reset basic settings
+          spacing: DEFAULT_SPACING,
+          fontSize: DEFAULT_FONT_SIZE,
+          selectedFont: monospacefonts[0],
+
+          // Reset all grid state
+          columnState: [],
+          columnDefs: [],
+          filterModel: {},
+          sortModel: [],
+          gridOptions: {}
+        });
+
+        console.log('Grid store reset to defaults');
+
+        // Then set the selected profile ID and load its settings
         set({ selectedProfileId: id });
         get().loadFromProfile(id);
       },
 
       saveToProfile: () => {
-        const { selectedProfileId, spacing, fontSize, selectedFont, columnState, filterModel, sortModel, gridOptions } = get();
+        const { selectedProfileId, spacing, fontSize, selectedFont, columnState, columnDefs, filterModel, sortModel, gridOptions } = get();
 
         if (!selectedProfileId) return;
 
@@ -152,6 +176,7 @@ export const useGridStore = create<GridState>()(
           fontSize,
           fontFamily: selectedFont.value,
           columnState,
+          columnDefs,
           filterModel,
           sortModel,
           gridOptions
@@ -163,6 +188,13 @@ export const useGridStore = create<GridState>()(
 
         if (!profile) return;
 
+        // Create a deep copy of profile data to avoid reference issues
+        const profileColumnState = profile.columnState ? JSON.parse(JSON.stringify(profile.columnState)) : [];
+        const profileColumnDefs = profile.columnDefs ? JSON.parse(JSON.stringify(profile.columnDefs)) : [];
+        const profileFilterModel = profile.filterModel ? JSON.parse(JSON.stringify(profile.filterModel)) : {};
+        const profileSortModel = profile.sortModel ? JSON.parse(JSON.stringify(profile.sortModel)) : [];
+        const profileGridOptions = profile.gridOptions ? JSON.parse(JSON.stringify(profile.gridOptions)) : {};
+
         // Update the store with profile settings
         // This doesn't automatically update the grid - that happens separately
         // when the component uses these values
@@ -170,18 +202,21 @@ export const useGridStore = create<GridState>()(
           spacing: profile.spacing,
           fontSize: profile.fontSize,
           selectedFont: monospacefonts.find((f) => f.value === profile.fontFamily) || monospacefonts[0],
-          columnState: profile.columnState,
-          filterModel: profile.filterModel,
-          sortModel: profile.sortModel,
-          gridOptions: profile.gridOptions || {}
+          columnState: profileColumnState,
+          columnDefs: profileColumnDefs,
+          filterModel: profileFilterModel,
+          sortModel: profileSortModel,
+          gridOptions: profileGridOptions
         });
+
+        console.log('Loaded profile:', id, 'with column state:', profileColumnState, 'and column defs:', profileColumnDefs);
 
         // Note: The grid will be updated by the component when it detects these state changes
         // This maintains the one-way data flow: store -> grid
       },
 
       createProfileFromCurrent: (name) => {
-        const { spacing, fontSize, selectedFont, columnState, filterModel, sortModel, gridOptions } = get();
+        const { spacing, fontSize, selectedFont, columnState, columnDefs, filterModel, sortModel, gridOptions } = get();
 
         const profileId = get().addProfile({
           name,
@@ -189,6 +224,7 @@ export const useGridStore = create<GridState>()(
           fontSize,
           fontFamily: selectedFont.value,
           columnState,
+          columnDefs,
           filterModel,
           sortModel,
           gridOptions
@@ -208,6 +244,7 @@ export const useGridStore = create<GridState>()(
         fontSize: state.fontSize,
         selectedFont: state.selectedFont,
         columnState: state.columnState,
+        columnDefs: state.columnDefs,
         filterModel: state.filterModel,
         sortModel: state.sortModel,
         gridOptions: state.gridOptions
@@ -228,6 +265,7 @@ export const useGridStore = create<GridState>()(
             state.fontSize = profile.fontSize;
             state.selectedFont = state.selectedFont; // Keep the font that was loaded
             state.columnState = profile.columnState;
+            state.columnDefs = profile.columnDefs || [];
             state.filterModel = profile.filterModel;
             state.sortModel = profile.sortModel;
             state.gridOptions = profile.gridOptions || {};

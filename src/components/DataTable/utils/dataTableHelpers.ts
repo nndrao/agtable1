@@ -258,26 +258,222 @@ export interface GridRowData {
 }
 
 /**
- * Create column definitions from row data
+ * Generates value formatter for number values with specified precision
  */
-export function generateColumnDefsFromData(rowData: GridRowData[]): ColDef[] {
+export function createNumberFormatter(precision = 2) {
+  return (params: ValueFormatterParams) => {
+    if (params.value === null || params.value === undefined) return '';
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+    }).format(params.value);
+  };
+}
+
+/**
+ * Generates value formatter for percentage values
+ */
+export function createPercentFormatter(precision = 2) {
+  return (params: ValueFormatterParams) => {
+    if (params.value === null || params.value === undefined) return '';
+    return new Intl.NumberFormat('en-US', {
+      style: 'percent',
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+    }).format(params.value / 100); // Divide by 100 as AG-Grid expects percentages as whole numbers
+  };
+}
+
+/**
+ * Generates value formatter for date values
+ */
+export function createDateFormatter(format = 'MM/dd/yyyy') {
+  return (params: ValueFormatterParams) => {
+    if (params.value === null || params.value === undefined) return '';
+    try {
+      const date = new Date(params.value);
+      if (isNaN(date.getTime())) return params.value; // Return original if not a valid date
+
+      // Format based on the requested format
+      if (format === 'MM/dd/yyyy') {
+        return date.toLocaleDateString('en-US');
+      } else if (format === 'MM/dd/yyyy HH:mm') {
+        return date.toLocaleString('en-US');
+      } else {
+        return date.toLocaleDateString('en-US');
+      }
+    } catch (e) {
+      return params.value; // Return original value if parsing fails
+    }
+  };
+}
+
+/**
+ * Detect if a string might be a date
+ */
+function isLikelyDate(value: string): boolean {
+  // Check for common date formats
+  const dateRegex = /^\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}(\s\d{1,2}:\d{1,2}(:\d{1,2})?)?$/;
+  if (dateRegex.test(value)) return true;
+
+  // Try parsing as a date
+  try {
+    const date = new Date(value);
+    // Check if it's a valid date and not just a number that got converted
+    return !isNaN(date.getTime()) && value.includes('-') || value.includes('/') || value.includes('.');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Detect the most likely data type for a column by sampling values
+ */
+function detectColumnType(values: any[], fieldName: string): {
+  type: 'string' | 'number' | 'integer' | 'boolean' | 'date' | 'currency' | 'percentage' | 'mixed';
+  precision?: number;
+} {
+  // Filter out null and undefined values
+  const nonNullValues = values.filter(v => v !== null && v !== undefined);
+  if (nonNullValues.length === 0) return { type: 'string' };
+
+  // Check if all values are of the same type
+  const types = new Set(nonNullValues.map(v => typeof v));
+
+  // If all values are strings, check if they might be dates
+  if (types.size === 1 && types.has('string')) {
+    // Check if they might be dates
+    const sampleSize = Math.min(nonNullValues.length, 10);
+    const samples = nonNullValues.slice(0, sampleSize);
+    const dateCount = samples.filter(v => isLikelyDate(v as string)).length;
+
+    if (dateCount / sampleSize > 0.8) {
+      return { type: 'date' };
+    }
+
+    return { type: 'string' };
+  }
+
+  // If all values are numbers
+  if (types.size === 1 && types.has('number')) {
+    // Check field name for hints
+    const fieldNameLower = fieldName.toLowerCase();
+
+    // Check if it's likely a currency field
+    if (fieldNameLower.includes('price') ||
+        fieldNameLower.includes('cost') ||
+        fieldNameLower.includes('amount') ||
+        fieldNameLower.includes('value') ||
+        fieldNameLower.includes('revenue') ||
+        fieldNameLower.includes('budget')) {
+      return { type: 'currency' };
+    }
+
+    // Check if it's likely a percentage field
+    if (fieldNameLower.includes('percent') ||
+        fieldNameLower.includes('rate') ||
+        fieldNameLower.includes('ratio') ||
+        fieldNameLower.includes('yield')) {
+      return { type: 'percentage' };
+    }
+
+    // Determine if it's an integer or float
+    const sampleSize = Math.min(nonNullValues.length, 10);
+    const samples = nonNullValues.slice(0, sampleSize) as number[];
+    const nonIntegerCount = samples.filter(v => v % 1 !== 0).length;
+
+    if (nonIntegerCount === 0) {
+      return { type: 'integer' };
+    } else {
+      // Calculate the average precision needed
+      const precisions = samples
+        .filter(v => v % 1 !== 0)
+        .map(v => v.toString().split('.')[1]?.length || 0);
+
+      const avgPrecision = precisions.length > 0
+        ? Math.min(Math.ceil(precisions.reduce((a, b) => a + b, 0) / precisions.length), 4)
+        : 2;
+
+      return { type: 'number', precision: avgPrecision };
+    }
+  }
+
+  // If all values are booleans
+  if (types.size === 1 && types.has('boolean')) {
+    return { type: 'boolean' };
+  }
+
+  // Mixed types
+  return { type: 'mixed' };
+}
+
+/**
+ * Create column definitions from row data with enhanced type detection
+ * @param rowData The data to analyze for column definitions
+ * @param sampleSize Number of rows to sample for type detection (default: 20)
+ */
+export function generateColumnDefsFromData(rowData: GridRowData[], sampleSize = 20): ColDef[] {
   if (!rowData || rowData.length === 0) return [];
 
   const firstRow = rowData[0];
-  return Object.keys(firstRow).map(key => {
+  const fields = Object.keys(firstRow);
+
+  // Determine how many rows to sample
+  const actualSampleSize = Math.min(rowData.length, sampleSize);
+  const sampleRows = rowData.slice(0, actualSampleSize);
+
+  return fields.map(field => {
+    // Extract sample values for this field
+    const fieldValues = sampleRows.map(row => row[field]);
+
+    // Detect the column type
+    const typeInfo = detectColumnType(fieldValues, field);
+
+    // Create base column definition
     const colDef: ColDef = {
-      field: key,
-      headerName: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize first letter
-      filter: true,
+      field,
+      headerName: field.charAt(0).toUpperCase() + field.slice(1), // Capitalize first letter
       sortable: true,
       resizable: true,
       editable: true,
     };
 
-    // Add special formatting for fields that look like numbers
-    if (typeof firstRow[key] === 'number' && key.toLowerCase().includes('price')) {
-      colDef.valueFormatter = createCurrencyFormatter('USD');
+    // Apply type-specific configurations
+    switch (typeInfo.type) {
+      case 'number':
+      case 'integer':
+        colDef.filter = 'agNumberColumnFilter';
+        colDef.valueFormatter = createNumberFormatter(typeInfo.precision || 0);
+        break;
+
+      case 'currency':
+        colDef.filter = 'agNumberColumnFilter';
+        colDef.valueFormatter = createCurrencyFormatter('USD');
+        break;
+
+      case 'percentage':
+        colDef.filter = 'agNumberColumnFilter';
+        colDef.valueFormatter = createPercentFormatter(typeInfo.precision || 2);
+        break;
+
+      case 'date':
+        colDef.filter = 'agDateColumnFilter';
+        colDef.valueFormatter = createDateFormatter();
+        break;
+
+      case 'boolean':
+        colDef.filter = 'agSetColumnFilter';
+        colDef.cellRenderer = 'agCheckboxCellRenderer';
+        break;
+
+      case 'string':
+      case 'mixed':
+      default:
+        colDef.filter = 'agTextColumnFilter';
+        break;
     }
+
+    console.log(`Field ${field} detected as ${typeInfo.type}${typeInfo.precision !== undefined ? ` with precision ${typeInfo.precision}` : ''}`);
 
     return colDef;
   });

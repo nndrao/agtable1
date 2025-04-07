@@ -25,3 +25,22 @@
   transition: none !important;
   animation: none !important;
 }
+
+/* Custom Header Alignment Classes */
+.ag-theme-quartz .custom-header-left .ag-header-cell-label {
+  justify-content: flex-start !important;
+}
+
+.ag-theme-quartz .custom-header-center .ag-header-cell-label {
+  justify-content: center !important;
+}
+
+.ag-theme-quartz .custom-header-right .ag-header-cell-label {
+  justify-content: flex-end !important;
+}
+
+/* Ensure the label container gets the full width */
+.ag-theme-quartz .ag-header-cell-label {
+  display: flex;
+  width: 100%;
+}

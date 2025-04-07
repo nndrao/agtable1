@@ -36,9 +36,9 @@ export interface GridSettings {
   editType: 'fullRow' | 'singleClick' | 'doubleClick';
   singleClickEdit: boolean;
   suppressClickEdit: boolean;
-  enterMovesDown: boolean;
-  enterMovesDownAfterEdit: boolean;
-  arrowKeysNavigateAfterEdit: boolean;
+  enterNavigatesVertically: boolean;
+  enterNavigatesVerticallyAfterEdit: boolean;
+  useCustomNavigation: boolean; // Replaces arrowKeysNavigateAfterEdit
   undoRedoCellEditing: boolean;
   undoRedoCellEditingLimit: number;
 

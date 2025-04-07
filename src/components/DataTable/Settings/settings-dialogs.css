@@ -1,0 +1,5 @@
+/* Hide the default close button in the settings dialogs */
+.column-settings-dialog [data-radix-dialog-close],
+.general-settings-dialog [data-radix-dialog-close] {
+  display: none !important;
+}

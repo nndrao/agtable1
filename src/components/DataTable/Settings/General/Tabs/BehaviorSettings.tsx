@@ -77,8 +77,8 @@ export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsPro
         <div className="space-y-2">
           <Label htmlFor="navigateToNextCell">Tab Navigation Direction</Label>
           <Select
-            value={options.navigateToNextCellWhenAtLastCell ? "wrap" : "stop"}
-            onValueChange={(value) => updateOptions("navigateToNextCellWhenAtLastCell", value === "wrap")}
+            value={options.navigateToNextCellOnLastCell ? "wrap" : "stop"}
+            onValueChange={(value) => updateOptions("navigateToNextCellOnLastCell", value === "wrap")}
           >
             <SelectTrigger id="navigateToNextCell">
               <SelectValue placeholder="Select behavior" />
