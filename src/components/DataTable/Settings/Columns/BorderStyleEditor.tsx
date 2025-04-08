@@ -30,7 +30,7 @@ export function BorderStyleEditor({
 }: BorderStyleEditorProps) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center space-x-2">
           <Checkbox
             id={`border-${title.toLowerCase()}-enabled`}
@@ -59,14 +59,14 @@ export function BorderStyleEditor({
               max={10}
               value={width}
               onChange={(e) => onWidthChange(parseInt(e.target.value) || 1)}
-              className="h-8"
+              className="h-8 text-xs rounded-md bg-background border-border/60"
             />
           </div>
 
           <div>
             <Label className="text-xs mb-1 block">Style</Label>
             <Select value={style} onValueChange={onStyleChange}>
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-8 text-xs rounded-md bg-background border-border/60">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -83,7 +83,7 @@ export function BorderStyleEditor({
             <div className="flex items-center space-x-2">
               <div className="relative">
                 <div
-                  className="w-8 h-8 rounded border cursor-pointer overflow-hidden"
+                  className="w-8 h-8 rounded-md border border-border/60 cursor-pointer overflow-hidden shadow-sm"
                   style={{ backgroundColor: color }}
                 >
                   <Input
@@ -99,7 +99,7 @@ export function BorderStyleEditor({
                 type="text"
                 value={color}
                 onChange={(e) => onColorChange(e.target.value)}
-                className="h-8 flex-1"
+                className="h-8 flex-1 text-xs rounded-md bg-background border-border/60"
                 placeholder="#RRGGBB"
               />
             </div>

@@ -1,10 +1,12 @@
 /* Hide the default close button in the dialog */
-.general-settings-dialog [data-radix-popper-content-wrapper] > div > button {
+.general-settings-dialog [data-radix-popper-content-wrapper] > div > button,
+.column-settings-dialog [data-radix-popper-content-wrapper] > div > button {
   display: none;
 }
 
 /* Add a subtle shadow to the dialog */
-.general-settings-dialog {
+.general-settings-dialog,
+.column-settings-dialog {
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1), 0 5px 15px -5px rgba(0, 0, 0, 0.05);
 }
 
@@ -124,4 +126,16 @@
   justify-content: space-between;
   font-style: italic;
   color: var(--muted-foreground);
+}
+
+/* Column settings dialog specific styles */
+.column-settings-dialog .tab-indicator {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--primary);
 }
