@@ -181,30 +181,36 @@ export function PropertyGridDialog({ open, onOpenChange }: PropertyGridDialogPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] w-[700px] p-0 gap-0 rounded-lg overflow-hidden general-settings-dialog">
+      <DialogContent className="max-w-[90vw] w-[700px] p-0 gap-0 rounded-xl overflow-hidden general-settings-dialog border-none shadow-xl bg-gradient-to-b from-background to-muted/30">
         {/* The general-settings-dialog class is used to target and hide the default close button with CSS */}
-        <div className="flex flex-col h-[80vh] max-h-[800px] min-h-[500px] bg-background">
+        <div className="flex flex-col h-[80vh] max-h-[800px] min-h-[500px]">
           {/* Fixed Header */}
-          <div className="flex items-center justify-between bg-muted/30 px-4 py-3 border-b z-10">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-primary" />
-              <span className="text-lg font-semibold">Grid Settings</span>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border/40 z-10 bg-gradient-to-r from-background to-background/80">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Settings className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <span className="text-lg font-semibold tracking-tight">Grid Settings</span>
+                <p className="text-xs text-muted-foreground mt-0.5">Configure your grid appearance and behavior</p>
+              </div>
               {changedProperties.size > 0 && (
-                <Badge variant="outline" className="ml-2 bg-primary/10 text-primary text-xs">
+                <Badge variant="outline" className="ml-2 bg-primary/10 text-primary text-xs rounded-full px-2.5">
                   {changedProperties.size} {changedProperties.size === 1 ? 'Change' : 'Changes'}
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleUndo}
                   disabled={undoStack.length === 0}
                   title="Undo"
+                  className="h-8 w-8 rounded-full hover:bg-muted"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
                 </Button>
                 <Button
                   variant="ghost"
@@ -212,14 +218,26 @@ export function PropertyGridDialog({ open, onOpenChange }: PropertyGridDialogPro
                   onClick={handleRedo}
                   disabled={redoStack.length === 0}
                   title="Redo"
+                  className="h-8 w-8 rounded-full hover:bg-muted"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
                 </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={handleReset} disabled={changedProperties.size === 0}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={changedProperties.size === 0}
+                className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
+              >
                 Reset to Defaults
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+                className="h-8 w-8 rounded-full hover:bg-muted"
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -236,13 +254,14 @@ export function PropertyGridDialog({ open, onOpenChange }: PropertyGridDialogPro
           </div>
 
           {/* Fixed Footer */}
-          <div className="border-t bg-muted/30 px-4 py-3 flex items-center justify-between z-10">
+          <div className="border-t border-border/40 px-5 py-4 flex items-center justify-between z-10 bg-gradient-to-r from-background to-background/80">
             <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleExport}
+                className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
               >
                 Export Settings
               </Button>
@@ -254,6 +273,7 @@ export function PropertyGridDialog({ open, onOpenChange }: PropertyGridDialogPro
                   onClick={() => {
                     document.getElementById('import-settings')?.click();
                   }}
+                  className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
                 >
                   Import Settings
                 </Button>
@@ -272,6 +292,7 @@ export function PropertyGridDialog({ open, onOpenChange }: PropertyGridDialogPro
                 variant="outline"
                 onClick={handleCancel}
                 size="sm"
+                className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
               >
                 Cancel
               </Button>
@@ -280,6 +301,7 @@ export function PropertyGridDialog({ open, onOpenChange }: PropertyGridDialogPro
                 onClick={handleSave}
                 disabled={changedProperties.size === 0}
                 size="sm"
+                className="rounded-full text-xs h-8 px-3 bg-primary hover:bg-primary/90"
               >
                 Save Changes
               </Button>

@@ -3,26 +3,34 @@
   display: none;
 }
 
+/* Add a subtle shadow to the dialog */
+.general-settings-dialog {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1), 0 5px 15px -5px rgba(0, 0, 0, 0.05);
+}
+
 /* Styling for property grid */
 .property-grid-table {
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
   font-size: 12px;
+  --row-hover-bg: rgba(var(--primary-rgb), 0.03);
+  --row-modified-bg: rgba(var(--primary-rgb), 0.07);
 }
 
 .property-grid-table tr:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: var(--row-hover-bg);
 }
 
 .property-grid-table tr.modified {
-  background-color: rgba(var(--primary-rgb), 0.05);
+  background-color: var(--row-modified-bg);
 }
 
 .property-grid-table td {
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
   vertical-align: middle;
+  transition: background-color 0.15s ease;
 }
 
 .property-grid-table td:first-child {
@@ -31,6 +39,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-right: 1px solid rgba(var(--border-rgb), 0.1);
 }
 
 /* Tooltip styling */
@@ -85,22 +94,28 @@
 .property-editor-number {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .property-editor-number input {
-  width: 40px;
+  width: 45px;
   text-align: center;
   padding-left: 0.25rem;
   padding-right: 0.25rem;
+  border-color: rgba(var(--border-rgb), 0.5);
 }
 
 .property-editor-string input {
   width: 100%;
+  border-color: rgba(var(--border-rgb), 0.5);
 }
 
 .property-editor-select {
   width: 100%;
+}
+
+.property-editor-select button {
+  border-color: rgba(var(--border-rgb), 0.5);
 }
 
 .property-editor-object {

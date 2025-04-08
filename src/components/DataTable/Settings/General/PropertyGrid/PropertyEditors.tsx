@@ -33,10 +33,12 @@ function BooleanEditor({ property, onChange }: PropertyEditorProps) {
       <Switch
         checked={property.value === true}
         onCheckedChange={(checked) => onChange(property.path, checked)}
-        className="h-4 w-7 data-[state=checked]:bg-primary"
+        className="h-5 w-9 data-[state=checked]:bg-primary"
       />
-      <span className="text-[10px] text-muted-foreground ml-1">
-        {property.value === true ? "Enabled" : "Disabled"}
+      <span className="text-[10px] text-muted-foreground ml-1 min-w-12 text-right">
+        {property.value === true ?
+          <span className="text-primary/90 font-medium">Enabled</span> :
+          <span className="text-muted-foreground">Disabled</span>}
       </span>
     </div>
   );
@@ -50,10 +52,10 @@ function NumberEditor({ property, onChange }: PropertyEditorProps) {
   const step = property.options && property.options.length >= 3 ? parseFloat(property.options![2]) : 1;
 
   return (
-    <div className="flex items-center gap-0.5 property-editor property-editor-number">
+    <div className="flex items-center gap-1 property-editor property-editor-number">
       {hasRange && (
         <>
-          <span className="text-[8px] text-muted-foreground w-4 text-right">{min}</span>
+          <span className="text-[8px] text-muted-foreground w-5 text-right">{min}</span>
           <Slider
             value={[property.value !== undefined ? property.value : min]}
             min={min}
@@ -62,7 +64,7 @@ function NumberEditor({ property, onChange }: PropertyEditorProps) {
             onValueChange={(value) => onChange(property.path, value[0])}
             className="flex-1 h-5"
           />
-          <span className="text-[8px] text-muted-foreground w-4 text-left">{max}</span>
+          <span className="text-[8px] text-muted-foreground w-5 text-left">{max}</span>
         </>
       )}
       <Input
@@ -74,7 +76,7 @@ function NumberEditor({ property, onChange }: PropertyEditorProps) {
             onChange(property.path, value);
           }
         }}
-        className="w-12 h-6 text-center text-xs"
+        className="w-14 h-7 text-center text-xs rounded-md bg-background border-border/60"
       />
     </div>
   );
@@ -82,7 +84,7 @@ function NumberEditor({ property, onChange }: PropertyEditorProps) {
 
 function SelectEditor({ property, onChange }: PropertyEditorProps) {
   if (!property.options || property.options.length === 0) {
-    return <div className="text-xs text-muted-foreground">No options available</div>;
+    return <div className="text-xs text-muted-foreground italic">No options available</div>;
   }
 
   // Special handling for autoSizeStrategy
@@ -101,7 +103,7 @@ function SelectEditor({ property, onChange }: PropertyEditorProps) {
             }
           }}
         >
-          <SelectTrigger className="h-6 text-xs">
+          <SelectTrigger className="h-7 text-xs rounded-md bg-background border-border/60">
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
           <SelectContent>
@@ -146,7 +148,7 @@ function StringEditor({ property, onChange }: PropertyEditorProps) {
       <Input
         value={property.value !== undefined ? property.value : ""}
         onChange={(e) => onChange(property.path, e.target.value)}
-        className="h-6 text-xs"
+        className="h-7 text-xs rounded-md bg-background border-border/60"
       />
     </div>
   );
@@ -159,7 +161,7 @@ function ObjectEditor({ property, onChange }: PropertyEditorProps) {
         {property.value ? "{...}" : "null"}
       </span>
       <button
-        className="text-[10px] text-primary hover:underline"
+        className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full hover:bg-primary/20 transition-colors"
         onClick={() => {
           // For now, just show a string representation
           alert(JSON.stringify(property.value, null, 2));
