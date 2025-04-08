@@ -82,10 +82,10 @@ export function DataTable({
   // This fixes warnings about invalid grid options
   const sanitizedGridOptions = useMemo(() => {
     if (!gridOptions) return {};
-    
+
     // Create a deep copy to avoid mutating the original object
     const sanitized = JSON.parse(JSON.stringify(gridOptions));
-    
+
     // Remove or convert all invalid grid options
     if ('suppressCellBorders' in sanitized) delete sanitized.suppressCellBorders;
     if ('suppressHeaderBorders' in sanitized) delete sanitized.suppressHeaderBorders;
@@ -106,7 +106,7 @@ export function DataTable({
       sanitized.enterNavigatesVerticallyAfterEdit = sanitized.enterMovesDownAfterEdit;
       delete sanitized.enterMovesDownAfterEdit;
     }
-    
+
     return sanitized;
   }, [gridOptions]);
 
@@ -671,22 +671,22 @@ export function DataTable({
     // Don't suppress other events
     return false;
   }, [sanitizedGridOptions]);
-  
+
   // Custom navigation handler to implement cell navigation behavior
   const navigateToNextCell = useCallback((params: any) => {
     const { nextCellPosition, previousCellPosition, event } = params;
-    
+
     // If there's no next cell position (we're at an edge), decide what to do based on settings
     if (!nextCellPosition) {
       // Check if we should navigate to the next row or column when at the last cell
       const navigateToNextCellOnLastCell = sanitizedGridOptions?.navigateToNextCellOnLastCell === true;
-      
+
       if (navigateToNextCellOnLastCell && previousCellPosition) {
         // Determine direction based on the key pressed
         const isTabKey = event?.key === 'Tab';
         const isShiftKey = event?.shiftKey === true;
         const isEnterKey = event?.key === 'Enter';
-        
+
         // Handle Tab key navigation (horizontal movement)
         if (isTabKey) {
           const direction = isShiftKey ? -1 : 1;
@@ -707,7 +707,7 @@ export function DataTable({
             };
           }
         }
-        
+
         // Handle Enter key navigation (vertical movement) if enterNavigatesVertically is enabled
         const enterNavigatesVertically = sanitizedGridOptions?.enterNavigatesVertically === true;
         if (isEnterKey && enterNavigatesVertically) {
@@ -720,7 +720,7 @@ export function DataTable({
         }
       }
     }
-    
+
     // Return the default next cell position
     return nextCellPosition;
   }, [sanitizedGridOptions]);
@@ -729,7 +729,7 @@ export function DataTable({
 
   return (
     <div
-      className={`flex h-full flex-col rounded-md border bg-card ${darkMode ? 'dark' : 'light'}`}
+      className={`flex h-full flex-col rounded-md border ${darkMode ? 'dark' : 'light'}`}
       data-theme={darkMode ? 'dark' : 'light'}
     >
       <DataTableToolbar

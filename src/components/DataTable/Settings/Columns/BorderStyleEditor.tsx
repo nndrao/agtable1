@@ -52,7 +52,7 @@ export function BorderStyleEditor({
       {enabled && (
         <div className="grid grid-cols-3 gap-2 pl-6 mt-1">
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Width</Label>
+            <Label className="text-xs mb-1 block">Width</Label>
             <Input
               type="number"
               min={1}
@@ -64,7 +64,7 @@ export function BorderStyleEditor({
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Style</Label>
+            <Label className="text-xs mb-1 block">Style</Label>
             <Select value={style} onValueChange={onStyleChange}>
               <SelectTrigger className="h-8">
                 <SelectValue />
@@ -79,7 +79,7 @@ export function BorderStyleEditor({
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Color</Label>
+            <Label className="text-xs mb-1 block">Color</Label>
             <div className="flex items-center space-x-2">
               <div className="relative">
                 <div
