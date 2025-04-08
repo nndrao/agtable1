@@ -1,7 +1,10 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { ExternalLink, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface BehaviorSettingsProps {
   options: any;
@@ -9,155 +12,239 @@ interface BehaviorSettingsProps {
 }
 
 export function BehaviorSettings({ options, updateOptions }: BehaviorSettingsProps) {
+  // Helper function to create a documentation link tooltip
+  const DocLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-primary hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="h-3 w-3" />
+            {children}
+          </a>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          View AG-Grid documentation
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Interaction</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure how users interact with the grid.
-        </p>
-      </div>
+    <div className="space-y-8">
+      {/* Interaction Section */}
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-medium">Interaction</CardTitle>
+          <CardDescription>
+            Configure how users interact with the grid
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormItem className="flex flex-row items-center justify-between space-y-0 rounded-md border p-4">
+              <div className="space-y-1">
+                <FormLabel className="text-sm font-medium">
+                  Cell Text Selection
+                  <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-selection-enableCellTextSelection">
+                    docs
+                  </DocLink>
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Allow users to select and copy cell text
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={options.enableCellTextSelection === true}
+                  onCheckedChange={(checked) => updateOptions("enableCellTextSelection", checked)}
+                />
+              </FormControl>
+            </FormItem>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Enable Cell Text Selection</Label>
-            <p className="text-sm text-muted-foreground">Allow users to select and copy cell text</p>
+            <FormItem className="flex flex-row items-center justify-between space-y-0 rounded-md border p-4">
+              <div className="space-y-1">
+                <FormLabel className="text-sm font-medium">
+                  Range Selection
+                  <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-selection-enableRangeSelection">
+                    docs
+                  </DocLink>
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Allow selecting ranges of cells
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={options.enableRangeSelection === true}
+                  onCheckedChange={(checked) => updateOptions("enableRangeSelection", checked)}
+                />
+              </FormControl>
+            </FormItem>
           </div>
-          <Switch
-            checked={options.enableCellTextSelection === true}
-            onCheckedChange={(checked) => updateOptions("enableCellTextSelection", checked)}
-          />
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Enable Range Selection</Label>
-            <p className="text-sm text-muted-foreground">Allow selecting ranges of cells</p>
+      {/* Navigation & Keyboard Section */}
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-medium">Navigation & Keyboard</CardTitle>
+          <CardDescription>
+            Configure keyboard navigation and shortcuts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormItem className="flex flex-row items-center justify-between space-y-0 rounded-md border p-4">
+              <div className="space-y-1">
+                <FormLabel className="text-sm font-medium">
+                  Cell Navigation
+                  <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-nav-suppressCellNavigation">
+                    docs
+                  </DocLink>
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Enable keyboard navigation between cells
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={options.suppressCellNavigation !== true}
+                  onCheckedChange={(checked) => updateOptions("suppressCellNavigation", !checked)}
+                />
+              </FormControl>
+            </FormItem>
+
+            <FormItem className="flex flex-row items-center justify-between space-y-0 rounded-md border p-4">
+              <div className="space-y-1">
+                <FormLabel className="text-sm font-medium">
+                  Tab Navigation
+                  <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-nav-tabToNextCell">
+                    docs
+                  </DocLink>
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Move to next cell after Tab key
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={options.tabToNextCell === true}
+                  onCheckedChange={(checked) => updateOptions("tabToNextCell", checked)}
+                />
+              </FormControl>
+            </FormItem>
+
+            <div className="space-y-2">
+              <Label htmlFor="navigateToNextCell" className="text-sm font-medium">
+                Tab Navigation Direction
+                <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-nav-navigateToNextCellOnLastCell">
+                  docs
+                </DocLink>
+              </Label>
+              <Select
+                value={options.navigateToNextCellOnLastCell ? "wrap" : "stop"}
+                onValueChange={(value) => updateOptions("navigateToNextCellOnLastCell", value === "wrap")}
+              >
+                <SelectTrigger id="navigateToNextCell" className="text-sm">
+                  <SelectValue placeholder="Select behavior" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stop">Stop at last cell</SelectItem>
+                  <SelectItem value="wrap">Wrap to next row</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                What happens when tabbing at the last cell
+              </p>
+            </div>
           </div>
-          <Switch
-            checked={options.enableRangeSelection === true}
-            onCheckedChange={(checked) => updateOptions("enableRangeSelection", checked)}
-          />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <Separator />
+      {/* Performance Section */}
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-medium">Performance</CardTitle>
+          <CardDescription>
+            Configure options that affect grid performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormItem className="flex flex-row items-center justify-between space-y-0 rounded-md border p-4">
+              <div className="space-y-1">
+                <FormLabel className="text-sm font-medium">
+                  Disable Column Virtualization
+                  <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-rendering-suppressColumnVirtualisation">
+                    docs
+                  </DocLink>
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Render all columns at once (may impact performance)
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={options.suppressColumnVirtualisation === true}
+                  onCheckedChange={(checked) => updateOptions("suppressColumnVirtualisation", checked)}
+                />
+              </FormControl>
+            </FormItem>
 
-      <div>
-        <h3 className="text-lg font-medium">Navigation & Keyboard</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure keyboard navigation and shortcuts.
-        </p>
-      </div>
+            <FormItem className="flex flex-row items-center justify-between space-y-0 rounded-md border p-4">
+              <div className="space-y-1">
+                <FormLabel className="text-sm font-medium">
+                  Ensure DOM Order
+                  <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-rendering-ensureDomOrder">
+                    docs
+                  </DocLink>
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Maintain DOM order for accessibility (impacts performance)
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={options.ensureDomOrder === true}
+                  onCheckedChange={(checked) => updateOptions("ensureDomOrder", checked)}
+                />
+              </FormControl>
+            </FormItem>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Enable Cell Navigation</Label>
-            <p className="text-sm text-muted-foreground">Navigate cells with keyboard</p>
+            <div className="space-y-2">
+              <Label htmlFor="rowModelType" className="text-sm font-medium">
+                Row Model Type
+                <DocLink href="https://www.ag-grid.com/react-data-grid/grid-options/#reference-rowModels-rowModelType">
+                  docs
+                </DocLink>
+              </Label>
+              <Select
+                value={options.rowModelType || "clientSide"}
+                onValueChange={(value) => updateOptions("rowModelType", value)}
+              >
+                <SelectTrigger id="rowModelType" className="text-sm">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clientSide">Client Side</SelectItem>
+                  <SelectItem value="infinite">Infinite</SelectItem>
+                  <SelectItem value="serverSide">Server Side</SelectItem>
+                  <SelectItem value="viewport">Viewport</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                How data is loaded and managed
+              </p>
+            </div>
           </div>
-          <Switch
-            checked={options.suppressCellNavigation !== true}
-            onCheckedChange={(checked) => updateOptions("suppressCellNavigation", !checked)}
-          />
-        </div>
-
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Navigate After Tab</Label>
-            <p className="text-sm text-muted-foreground">Move to next cell after Tab key</p>
-          </div>
-          <Switch
-            checked={options.tabToNextCell === true}
-            onCheckedChange={(checked) => updateOptions("tabToNextCell", checked)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="navigateToNextCell">Tab Navigation Direction</Label>
-          <Select
-            value={options.navigateToNextCellOnLastCell ? "wrap" : "stop"}
-            onValueChange={(value) => updateOptions("navigateToNextCellOnLastCell", value === "wrap")}
-          >
-            <SelectTrigger id="navigateToNextCell">
-              <SelectValue placeholder="Select behavior" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="stop">Stop at last cell</SelectItem>
-              <SelectItem value="wrap">Wrap to next row</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            What happens when tabbing at the last cell
-          </p>
-        </div>
-      </div>
-
-      <Separator />
-
-      <div>
-        <h3 className="text-lg font-medium">Performance</h3>
-        <p className="text-sm text-muted-foreground">
-          Configure options that affect grid performance.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Suppress Column Virtualization</Label>
-            <p className="text-sm text-muted-foreground">Render all columns at once</p>
-          </div>
-          <Switch
-            checked={options.suppressColumnVirtualisation === true}
-            onCheckedChange={(checked) => updateOptions("suppressColumnVirtualisation", checked)}
-          />
-        </div>
-
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Cache Quick Filter</Label>
-            <p className="text-sm text-muted-foreground">Improve filter performance</p>
-          </div>
-          <Switch
-            checked={options.cacheQuickFilter === true}
-            onCheckedChange={(checked) => updateOptions("cacheQuickFilter", checked)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="rowModelType">Row Model Type</Label>
-          <Select
-            value={options.rowModelType || "clientSide"}
-            onValueChange={(value) => updateOptions("rowModelType", value)}
-          >
-            <SelectTrigger id="rowModelType">
-              <SelectValue placeholder="Select model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="clientSide">Client Side</SelectItem>
-              <SelectItem value="infinite">Infinite</SelectItem>
-              <SelectItem value="serverSide">Server Side</SelectItem>
-              <SelectItem value="viewport">Viewport</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            How data is loaded and managed
-          </p>
-        </div>
-
-        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label className="text-base">Ensure DOM Order</Label>
-            <p className="text-sm text-muted-foreground">Maintain DOM order for accessibility</p>
-          </div>
-          <Switch
-            checked={options.ensureDomOrder === true}
-            onCheckedChange={(checked) => updateOptions("ensureDomOrder", checked)}
-          />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

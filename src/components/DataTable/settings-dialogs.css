@@ -1,0 +1,112 @@
+/* Hide the default close button in the dialog */
+.general-settings-dialog [data-radix-popper-content-wrapper] > div > button {
+  display: none;
+}
+
+/* Styling for property grid */
+.property-grid-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 12px;
+}
+
+.property-grid-table tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.property-grid-table tr.modified {
+  background-color: rgba(var(--primary-rgb), 0.05);
+}
+
+.property-grid-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.property-grid-table td:first-child {
+  width: 45%;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tooltip styling */
+.property-tooltip {
+  max-width: 300px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Category badges */
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0 8px;
+  height: 20px;
+  font-size: 10px;
+  font-weight: 500;
+  background-color: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+}
+
+/* Modified property indicator */
+.modified-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  margin-left: 6px;
+}
+
+/* Search highlight */
+.search-highlight {
+  background-color: rgba(var(--primary-rgb), 0.2);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Property editor styles */
+.property-editor {
+  width: 100%;
+}
+
+.property-editor-boolean {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.property-editor-number {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.property-editor-number input {
+  width: 40px;
+  text-align: center;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.property-editor-string input {
+  width: 100%;
+}
+
+.property-editor-select {
+  width: 100%;
+}
+
+.property-editor-object {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-style: italic;
+  color: var(--muted-foreground);
+}

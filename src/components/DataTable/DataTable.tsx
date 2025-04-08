@@ -6,6 +6,7 @@ import { DataTableToolbar } from "./Toolbar/DataTableToolbar";
 
 import { ProfilesDialog } from "./Settings/Profiles/ProfilesDialog";
 import { GeneralSettingsDialog } from "./Settings/General/GeneralSettingsDialog";
+import { PropertyGridDialog } from "./Settings/General/PropertyGridDialog";
 import { ColumnSettingsDialog } from "./Settings/Columns/ColumnSettingsDialog";
 import { useThemeSync } from "./hooks/useThemeSync";
 import { useGrid } from "./hooks/useGridStore";
@@ -784,7 +785,8 @@ export function DataTable({
         onOpenChange={setProfilesDialogOpen}
       />
 
-      <GeneralSettingsDialog
+      {/* Use the new PropertyGridDialog instead of GeneralSettingsDialog */}
+      <PropertyGridDialog
         open={generalSettingsOpen}
         onOpenChange={setGeneralSettingsOpen}
       />
