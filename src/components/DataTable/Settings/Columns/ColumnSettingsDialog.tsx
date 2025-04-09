@@ -606,22 +606,15 @@ export function ColumnSettingsDialog({
     const changedColumnIds = Object.keys(changedProperties);
     console.log("Columns with explicit changes:", changedColumnIds);
 
-    // If no columns have been explicitly changed but hasChanges is true,
-    // force include the selected column
-    if (changedColumnIds.length === 0 && hasChanges && selectedColumn) {
-      console.log(
-        "No explicit changes detected, but hasChanges is true. Adding selected column:",
-        selectedColumn,
-      );
-      changedColumnIds.push(selectedColumn);
-    } else if (changedColumnIds.length === 0) {
-      console.log("No columns have been explicitly changed, nothing to save");
-      onOpenChange(false);
-      return;
+    // If no changes detected, just close
+    if (!hasChanges) {
+        console.log("No changes detected, closing dialog");
+        onOpenChange(false);
+        return;
     }
 
     // Extract only the properties that are part of the column state
-    // and only for columns that have been explicitly changed
+    // Apply state changes to *all* columns, not just changed ones, to ensure consistency
     const columnStateToSave = updatedColumns.map((col) => {
       // Always include the column ID
       const state: any = {
@@ -639,6 +632,11 @@ export function ColumnSettingsDialog({
       return state;
     });
 
+    // *** FIX: Save the COMPLETE updated column definitions, not just the changed ones ***
+    const columnDefsToSave = updatedColumnDefs;
+
+    // REMOVED: Filtering logic and attempts to add back missing definitions
+    /*
     // Filter column definitions to only include those that have been explicitly changed
     const columnDefsToSave = updatedColumnDefs.filter((colDef) => {
       const colId = colDef.colId || colDef.field;
@@ -668,130 +666,21 @@ export function ColumnSettingsDialog({
         }
       }
     });
-
-    // Ensure we always have at least a minimum definition for changed columns
-    if (
-      selectedColumn &&
-      changedColumnIds.includes(selectedColumn) &&
-      !columnDefsToSave.some(
-        (def) => def.colId === selectedColumn || def.field === selectedColumn,
-      )
-    ) {
-      // Find the original column definition
-      const originalColDef = columnDefs.find(
-        (def) => def.colId === selectedColumn || def.field === selectedColumn,
-      );
-
-      if (originalColDef) {
-        // Create a definition with the changed properties
-        const baseColDef: any = {
-          field: originalColDef.field,
-          colId: originalColDef.colId || originalColDef.field,
-          headerName: headerSettings.text || originalColDef.headerName,
-        };
-
-        // Add headerStyle and headerClass if we have header changes
-        if (changedProperties[selectedColumn]?.header) {
-          // Apply header alignment if it was changed
-          if (changedProperties[selectedColumn]?.header?.alignment) {
-            // Create a custom header class for alignment
-            baseColDef.headerClass = `custom-header-${headerSettings.alignment}`;
-
-            // Set headerComponentParams for more control
-            baseColDef.headerComponentParams =
-              baseColDef.headerComponentParams || {};
-
-            // Use flexbox justifyContent which is how AG-Grid headers work
-            baseColDef.headerStyle = baseColDef.headerStyle || {};
-            if (headerSettings.alignment === "left") {
-              baseColDef.headerStyle.justifyContent = "flex-start";
-            } else if (headerSettings.alignment === "center") {
-              baseColDef.headerStyle.justifyContent = "center";
-            } else if (headerSettings.alignment === "right") {
-              baseColDef.headerStyle.justifyContent = "flex-end";
-            }
-
-            console.log(
-              `Applied header alignment in fallback with justifyContent: ${baseColDef.headerStyle.justifyContent}`,
-            );
-          }
-
-          // Apply other header styles if they were changed
-          if (
-            changedProperties[selectedColumn]?.header?.textColor ||
-            changedProperties[selectedColumn]?.header?.backgroundColor ||
-            changedProperties[selectedColumn]?.header?.fontFamily ||
-            changedProperties[selectedColumn]?.header?.fontSize ||
-            changedProperties[selectedColumn]?.header?.fontWeight ||
-            changedProperties[selectedColumn]?.header?.fontStyle
-          ) {
-            baseColDef.headerStyle = baseColDef.headerStyle || {};
-
-            if (changedProperties[selectedColumn]?.header?.textColor)
-              baseColDef.headerStyle.color = headerSettings.textColor;
-            if (changedProperties[selectedColumn]?.header?.backgroundColor)
-              baseColDef.headerStyle.backgroundColor =
-                headerSettings.backgroundColor;
-            if (changedProperties[selectedColumn]?.header?.fontFamily)
-              baseColDef.headerStyle.fontFamily = headerSettings.fontFamily;
-            if (changedProperties[selectedColumn]?.header?.fontSize)
-              baseColDef.headerStyle.fontSize = `${headerSettings.fontSize}px`;
-            if (changedProperties[selectedColumn]?.header?.fontWeight)
-              baseColDef.headerStyle.fontWeight = headerSettings.fontWeight;
-            if (changedProperties[selectedColumn]?.header?.fontStyle)
-              baseColDef.headerStyle.fontStyle = headerSettings.fontStyle;
-          }
-        }
-
-        // Add cellStyle if we have cell changes
-        if (changedProperties[selectedColumn]?.cell) {
-          baseColDef.cellStyle = {
-            color: cellSettings.textColor,
-            backgroundColor: cellSettings.backgroundColor,
-            fontFamily: cellSettings.fontFamily,
-            fontSize: `${cellSettings.fontSize}px`,
-            fontWeight: cellSettings.fontWeight,
-            fontStyle: cellSettings.fontStyle,
-          };
-
-          // Explicitly handle alignment with the proper property name
-          if (changedProperties[selectedColumn]?.cell?.alignment) {
-            baseColDef.cellStyle.textAlign = cellSettings.alignment;
-          }
-
-          // Add border styles
-          if (cellSettings.borderTop) {
-            baseColDef.cellStyle.borderTop = `${cellSettings.borderTopWidth}px ${cellSettings.borderTopStyle} ${cellSettings.borderTopColor}`;
-          }
-          if (cellSettings.borderRight) {
-            baseColDef.cellStyle.borderRight = `${cellSettings.borderRightWidth}px ${cellSettings.borderRightStyle} ${cellSettings.borderRightColor}`;
-          }
-          if (cellSettings.borderBottom) {
-            baseColDef.cellStyle.borderBottom = `${cellSettings.borderBottomWidth}px ${cellSettings.borderBottomStyle} ${cellSettings.borderBottomColor}`;
-          }
-          if (cellSettings.borderLeft) {
-            baseColDef.cellStyle.borderLeft = `${cellSettings.borderLeftWidth}px ${cellSettings.borderLeftStyle} ${cellSettings.borderLeftColor}`;
-          }
-        }
-
-        console.log(
-          "Created enhanced column definition for:",
-          selectedColumn,
-          baseColDef,
-        );
-        columnDefsToSave.push(baseColDef);
-      }
-    }
+    */
 
     console.log("Saving column state to store:", columnStateToSave);
     console.log(
-      "Saving column definitions to store (final):",
-      columnDefsToSave,
+      "Saving COMPLETE column definitions to store:",
+      columnDefsToSave, // Now saving the full array
     );
 
     // Save both column state and column definitions to the store
     setColumnState(columnStateToSave);
-    setColumnDefs(columnDefsToSave);
+    setColumnDefs(columnDefsToSave); // Save the complete list
+
+    // Reset local state after saving
+    setHasChanges(false);
+    setChangedProperties({});
 
     // Close dialog
     onOpenChange(false);
@@ -799,13 +688,11 @@ export function ColumnSettingsDialog({
     onOpenChange,
     setColumnState,
     setColumnDefs,
-    updateColumnSettings,
+    updateColumnSettings, // Contains the logic to create updatedColumnDefs
     changedProperties,
-    selectedColumn,
     hasChanges,
-    columnDefs,
-    headerSettings,
-    cellSettings,
+    // No longer need selectedColumn, columnDefs, headerSettings, cellSettings here directly
+    // as they are used within updateColumnSettings
   ]);
 
   // Reset all columns to default
