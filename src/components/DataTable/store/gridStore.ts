@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ColDef } from 'ag-grid-community';
+import { ColDef, ValueFormatterParams } from 'ag-grid-community';
 import { monospacefonts, DEFAULT_SPACING, DEFAULT_FONT_SIZE } from '../utils/constants';
+
+// Default numeric format
+export const DEFAULT_NUMERIC_FORMAT = 'default';
 
 // Define the profile type
 export interface GridProfile {
@@ -15,6 +18,7 @@ export interface GridProfile {
   fontFamily: string;
   gridOptions: any;
   isDefault?: boolean;
+  numericFormatOption: string;
 }
 
 // Define the grid store state
@@ -24,6 +28,7 @@ interface GridState {
   fontSize: number;
   selectedFont: { name: string; value: string };
   darkMode: boolean;
+  numericFormatOption: string;
 
   // Grid state
   columnState: any[];
@@ -41,6 +46,7 @@ interface GridState {
   setFontSize: (fontSize: number) => void;
   setSelectedFont: (font: { name: string; value: string }) => void;
   setDarkMode: (darkMode: boolean) => void;
+  setNumericFormatOption: (option: string) => void;
 
   // Grid state actions
   setColumnState: (columnState: any[]) => void;
@@ -50,7 +56,7 @@ interface GridState {
   setGridOptions: (gridOptions: any) => void;
 
   // Profile actions
-  addProfile: (profile: Omit<GridProfile, 'id'>) => void;
+  addProfile: (profile: Omit<GridProfile, 'id'>) => string;
   updateProfile: (id: string, profile: Partial<GridProfile>) => void;
   deleteProfile: (id: string) => void;
   selectProfile: (id: string) => void;
@@ -76,7 +82,8 @@ const defaultProfile: GridProfile = {
   fontSize: DEFAULT_FONT_SIZE,
   fontFamily: monospacefonts[0].value,
   gridOptions: {},
-  isDefault: true
+  isDefault: true,
+  numericFormatOption: DEFAULT_NUMERIC_FORMAT,
 };
 
 // Create the grid store
@@ -88,6 +95,7 @@ export const useGridStore = create<GridState>()(
       fontSize: DEFAULT_FONT_SIZE,
       selectedFont: monospacefonts[0],
       darkMode: false,
+      numericFormatOption: DEFAULT_NUMERIC_FORMAT,
 
       columnState: [],
       filterModel: {},
@@ -102,6 +110,7 @@ export const useGridStore = create<GridState>()(
       setFontSize: (fontSize) => set({ fontSize }),
       setSelectedFont: (font) => set({ selectedFont: font }),
       setDarkMode: (darkMode) => set({ darkMode }),
+      setNumericFormatOption: (option) => set({ numericFormatOption: option }),
 
       // Grid state actions
       setColumnState: (columnState) => set({ columnState }),
@@ -113,8 +122,13 @@ export const useGridStore = create<GridState>()(
       // Profile actions
       addProfile: (profile) => {
         const id = `profile-${Date.now()}`;
+        const newProfile = {
+          ...profile,
+          id,
+          numericFormatOption: profile.numericFormatOption || DEFAULT_NUMERIC_FORMAT
+        };
         set((state) => ({
-          profiles: [...state.profiles, { ...profile, id }]
+          profiles: [...state.profiles, newProfile]
         }));
         return id;
       },
@@ -148,6 +162,7 @@ export const useGridStore = create<GridState>()(
           spacing: DEFAULT_SPACING,
           fontSize: DEFAULT_FONT_SIZE,
           selectedFont: monospacefonts[0],
+          numericFormatOption: DEFAULT_NUMERIC_FORMAT,
 
           // Reset all grid state
           columnState: [],
@@ -165,12 +180,14 @@ export const useGridStore = create<GridState>()(
       },
 
       saveToProfile: () => {
-        const { selectedProfileId, spacing, fontSize, selectedFont, columnState, columnDefs, filterModel, sortModel, gridOptions } = get();
+        const {
+          selectedProfileId, spacing, fontSize, selectedFont, columnState,
+          columnDefs, filterModel, sortModel, gridOptions, numericFormatOption
+        } = get();
 
         if (!selectedProfileId) return;
 
         // Save current settings to the selected profile
-        // This is the only place where grid state is saved to a profile
         get().updateProfile(selectedProfileId, {
           spacing,
           fontSize,
@@ -179,7 +196,8 @@ export const useGridStore = create<GridState>()(
           columnDefs,
           filterModel,
           sortModel,
-          gridOptions
+          gridOptions,
+          numericFormatOption
         });
       },
 
@@ -206,17 +224,18 @@ export const useGridStore = create<GridState>()(
           columnDefs: profileColumnDefs,
           filterModel: profileFilterModel,
           sortModel: profileSortModel,
-          gridOptions: profileGridOptions
+          gridOptions: profileGridOptions,
+          numericFormatOption: profile.numericFormatOption || DEFAULT_NUMERIC_FORMAT
         });
 
-        console.log('Loaded profile:', id, 'with column state:', profileColumnState, 'and column defs:', profileColumnDefs);
+        console.log('Loaded profile:', id, 'with format:', profile.numericFormatOption, 'column state:', profileColumnState, 'and column defs:', profileColumnDefs);
 
         // Note: The grid will be updated by the component when it detects these state changes
         // This maintains the one-way data flow: store -> grid
       },
 
       createProfileFromCurrent: (name) => {
-        const { spacing, fontSize, selectedFont, columnState, columnDefs, filterModel, sortModel, gridOptions } = get();
+        const { spacing, fontSize, selectedFont, columnState, columnDefs, filterModel, sortModel, gridOptions, numericFormatOption } = get();
 
         const profileId = get().addProfile({
           name,
@@ -227,7 +246,8 @@ export const useGridStore = create<GridState>()(
           columnDefs,
           filterModel,
           sortModel,
-          gridOptions
+          gridOptions,
+          numericFormatOption
         });
 
         set({ selectedProfileId: profileId });
@@ -247,7 +267,8 @@ export const useGridStore = create<GridState>()(
         columnDefs: state.columnDefs,
         filterModel: state.filterModel,
         sortModel: state.sortModel,
-        gridOptions: state.gridOptions
+        gridOptions: state.gridOptions,
+        numericFormatOption: state.numericFormatOption
       }),
       // This function runs when the store is hydrated from localStorage
       onRehydrateStorage: () => (state) => {
@@ -269,6 +290,7 @@ export const useGridStore = create<GridState>()(
             state.filterModel = profile.filterModel;
             state.sortModel = profile.sortModel;
             state.gridOptions = profile.gridOptions || {};
+            state.numericFormatOption = profile.numericFormatOption || DEFAULT_NUMERIC_FORMAT;
           }
         }
       }

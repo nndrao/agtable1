@@ -1,5 +1,5 @@
 import { useRef, useCallback, useMemo, useEffect, useState } from "react";
-import { ModuleRegistry, ColDef, GridOptions, SuppressKeyboardEventParams } from "ag-grid-community";
+import { ModuleRegistry, ColDef, GridOptions, SuppressKeyboardEventParams, ValueFormatterParams } from "ag-grid-community";
 import { AllEnterpriseModule } from "ag-grid-enterprise";
 import { AgGridReact } from "ag-grid-react";
 import { DataTableToolbar } from "./Toolbar/DataTableToolbar";
@@ -11,7 +11,7 @@ import { useThemeSync } from "./hooks/useThemeSync";
 import { useGridStore } from "./store/gridStore";
 import { generateColumnDefsFromData, GridRowData, defaultColDef } from "./utils/dataTableHelpers";
 import { createGridTheme, applyGridStyles, createGridTransitionsStyle } from "./utils/gridStyling";
-import { monospacefonts } from "./utils/constants";
+import { monospacefonts, DEFAULT_SPACING, DEFAULT_FONT_SIZE } from "./utils/constants";
 import "./styles/gridOptions.css";
 
 ModuleRegistry.registerModules([AllEnterpriseModule]);
@@ -25,6 +25,129 @@ export interface DataTableProps {
   gridOptions?: Partial<GridOptions>;
   onThemeChange?: (theme: "light" | "dark" | "system") => void;
 }
+
+// --- Add numeric formatting helper functions HERE ---
+
+/**
+ * Converts a decimal price to MBS tick format (points-32nds notation)
+ */
+function decimalToTickFormat(decimalPrice: number | null | undefined): string {
+  if (decimalPrice == null || isNaN(decimalPrice)) return "";
+  const wholePoints = Math.floor(decimalPrice);
+  const fraction = decimalPrice - wholePoints;
+  const thirtySeconds = fraction * 32;
+  const wholeThirtySeconds = Math.floor(thirtySeconds);
+  const remainderIn256ths = Math.round((thirtySeconds - wholeThirtySeconds) * 8);
+
+  if (remainderIn256ths > 0) {
+    return `${wholePoints}-${wholeThirtySeconds}${remainderIn256ths}`;
+  } else {
+    return `${wholePoints}-${wholeThirtySeconds < 10 ? '0' + wholeThirtySeconds : wholeThirtySeconds}`;
+  }
+}
+
+/**
+ * Formats large numbers with K, M, B suffixes.
+ */
+function formatNumberKMB(num: number | null | undefined): string {
+  if (num == null || isNaN(num)) return "";
+  if (Math.abs(num) < 1000) {
+    return num.toString(); // No suffix needed
+  }
+  const si = [
+    { value: 1, symbol: "" },
+    { value: 1E3, symbol: "K" },
+    { value: 1E6, symbol: "M" },
+    { value: 1E9, symbol: "B" },
+    { value: 1E12, symbol: "T" } // Add Trillion if needed
+  ];
+  const rx = /\.0+$|(\.[0-9]*[1-9])0+$/;
+  let i;
+  for (i = si.length - 1; i > 0; i--) {
+    if (Math.abs(num) >= si[i].value) {
+      break;
+    }
+  }
+  return (num / si[i].value).toFixed(1).replace(rx, "$1") + si[i].symbol;
+}
+
+/**
+ * Applies numeric formatting options to a list of column definitions.
+ */
+const applyNumericFormattingToDefs = (defs: ColDef[], formatOption: string): ColDef[] => {
+  if (!defs) return [];
+
+  const numericKeywords = [
+    'price', 'amount', 'quantity', 'value', 'id', 'number',
+    'count', 'size', 'total', 'balance', 'rate', 'level',
+    'vol', 'pct', 'percent', 'chg', 'age', 'qty', 'cost'
+  ];
+
+  return defs.map((colDef: any) => {
+    const fieldName = (colDef.field || colDef.colId || '').toLowerCase();
+    const isPotentiallyNumeric = numericKeywords.some(keyword => fieldName.includes(keyword));
+    const isNumericType = Array.isArray(colDef.type) ? colDef.type.includes('numericColumn') : colDef.type === 'numericColumn';
+
+    // Only apply to numeric columns
+    if (isNumericType || isPotentiallyNumeric) {
+      const newCellStyle = { ...colDef.cellStyle, textAlign: 'right' };
+      let newValueFormatter: ((params: ValueFormatterParams) => string) | undefined = undefined;
+
+      switch (formatOption) {
+        case 'currency':
+          newValueFormatter = (params: ValueFormatterParams) => {
+            if (params.value == null || isNaN(params.value)) return '';
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
+          };
+          break;
+        case 'dec0':
+          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(0);
+          break;
+        case 'dec1':
+          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(1);
+          break;
+        case 'dec2':
+          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(2);
+          break;
+        case 'dec3':
+          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(3);
+          break;
+        case 'dec4':
+          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(4);
+          break;
+        case 'kmb': // Note: Was 'k', 'm', 'b' before, consolidated
+          newValueFormatter = (params: ValueFormatterParams) => formatNumberKMB(params.value);
+          break;
+        case 'tick':
+          newValueFormatter = (params: ValueFormatterParams) => decimalToTickFormat(params.value);
+          break;
+        case 'default':
+        default:
+          newValueFormatter = undefined;
+          break;
+      }
+
+      return {
+          ...colDef,
+          cellStyle: newCellStyle,
+          valueFormatter: newValueFormatter
+      };
+    }
+    // Non-numeric column: Return original definition, potentially removing alignment if it was previously numeric
+    else if (colDef.cellStyle?.textAlign === 'right') {
+        const { textAlign, ...restCellStyle } = colDef.cellStyle;
+        return {
+            ...colDef,
+            cellStyle: Object.keys(restCellStyle).length > 0 ? restCellStyle : undefined,
+            valueFormatter: colDef.valueFormatter
+        };
+    }
+
+    return colDef;
+  });
+};
+
+// --- Rest of the DataTable component ---
 
 export function DataTable({
   data,
@@ -41,6 +164,7 @@ export function DataTable({
   const gridOptions = useGridStore(state => state.gridOptions); // Needed for sanitizedGridOptions & handleSaveProfile
   const profiles = useGridStore(state => state.profiles); // Needed for Toolbar
   const selectedProfileId = useGridStore(state => state.selectedProfileId); // Needed for Toolbar & useEffect
+  const numericFormatOption = useGridStore(state => state.numericFormatOption);
 
   // Select actions
   const setSpacing = useGridStore(state => state.setSpacing);
@@ -53,6 +177,7 @@ export function DataTable({
   const setGridOptions = useGridStore(state => state.setGridOptions); // Needed for handleSaveProfile
   const saveToProfile = useGridStore(state => state.saveToProfile);
   const selectProfile = useGridStore(state => state.selectProfile);
+  const setNumericFormatOption = useGridStore(state => state.setNumericFormatOption);
 
   // Local state for UI components
   const [profilesDialogOpen, setProfilesDialogOpen] = useState(false);
@@ -60,6 +185,11 @@ export function DataTable({
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [gridReady, setGridReady] = useState(false);
   const gridRef = useRef<AgGridReact>(null);
+
+  // Refs to manage initial load logic
+  const gridReadyRef = useRef(false);
+  const isHydratedRef = useRef(useGridStore.persist.hasHydrated());
+  const didInitialLoadApplyRef = useRef(false);
 
   // Use a unique ID for this grid instance
   const gridId = id || `grid-${Math.random().toString(36).substring(2, 11)}`;
@@ -202,20 +332,110 @@ export function DataTable({
     return [] as ColDef[];
   }, [data, rowData]);
 
+  // ** Define applySettingsToGrid function ONLY ONCE and AFTER helpers **
+  const applySettingsToGrid = useCallback(() => {
+    // Use refs for checks inside the callback
+    if (!gridReadyRef.current || !gridRef.current?.api) {
+      console.log('Apply skipped: Grid not ready or API not available');
+      return;
+    }
+    console.log('Applying settings to grid');
+    const gridApi = gridRef.current.api;
+    const latestState = useGridStore.getState();
+    const latestStoredColumnDefs = latestState.columnDefs;
+    const latestColumnState = latestState.columnState;
+    const latestFilterModel = latestState.filterModel;
+    const latestGridOptions = latestState.gridOptions;
+    const latestNumericFormat = latestState.numericFormatOption; // Get format
+
+    // Apply numeric formatting BEFORE saving/applying definitions
+    let formattedDefs = latestStoredColumnDefs; // Start with original
+    if (latestStoredColumnDefs) {
+        console.log(`Applying numeric format '${latestNumericFormat}' to column definitions`);
+        // Use the helper defined above
+        formattedDefs = applyNumericFormattingToDefs(latestStoredColumnDefs, latestNumericFormat);
+    }
+
+    // Apply column definitions (now formatted) if changed
+    // Compare and apply the *formatted* definitions
+    if (formattedDefs && formattedDefs !== lastAppliedSettings.current.columnDefs) {
+      console.log('Apply Check 2: Applying column definitions with formatting');
+      console.log('Formatted Defs to Apply:', JSON.stringify(formattedDefs.map((d: any) => ({ field: d.field, type: d.type, cellStyle: d.cellStyle, valueFormatter: d.valueFormatter ? '[Function]' : undefined })))); // Log relevant parts
+      // Apply the FORMATTED definitions
+      gridApi.setGridOption('columnDefs', formattedDefs);
+      // Store the reference to the FORMATTED definitions
+      lastAppliedSettings.current.columnDefs = formattedDefs;
+    }
+
+    // Apply column state if changed
+    if (latestColumnState && latestColumnState !== lastAppliedSettings.current.columnState) {
+      console.log('Applying column state');
+      gridApi.applyColumnState({ state: latestColumnState, applyOrder: true });
+       lastAppliedSettings.current.columnState = latestColumnState;
+    }
+
+    // Apply filter model
+    if (latestFilterModel && latestFilterModel !== lastAppliedSettings.current.filterModel) {
+      console.log('Applying filter model');
+      gridApi.setFilterModel(latestFilterModel);
+      lastAppliedSettings.current.filterModel = latestFilterModel;
+    }
+
+    // Apply grid options
+    if (latestGridOptions && latestGridOptions !== lastAppliedSettings.current.gridOptions) {
+      console.log('Applying grid options');
+      lastAppliedSettings.current.gridOptions = latestGridOptions;
+    }
+
+    // Refresh grid
+    console.log("Refreshing grid after explicit apply");
+    gridApi.refreshCells({force: true});
+    gridApi.redrawRows();
+    console.log('Settings applied to grid');
+  }, [
+    gridRef,
+    gridId,
+   ]);
+
+  // Function to check conditions and apply initial settings ONCE
+  const checkAndApplyInitialSettings = useCallback(() => {
+    console.log(`Checking initial apply: Hydrated=${isHydratedRef.current}, GridReady=${gridReadyRef.current}, InitialApplied=${didInitialLoadApplyRef.current}`);
+    if (
+      isHydratedRef.current &&
+      gridReadyRef.current &&
+      !didInitialLoadApplyRef.current
+    ) {
+      console.log("Conditions met, applying initial settings.");
+      applySettingsToGrid();
+      didInitialLoadApplyRef.current = true; // Ensure it only runs once
+    }
+  }, [applySettingsToGrid]); // Dependency on the apply function itself
+
+  // Effect to watch hydration status
+  const isHydrated = useGridStore.persist.hasHydrated();
+  useEffect(() => {
+    if (isHydrated && !isHydratedRef.current) {
+        console.log("Store hydration detected.");
+        isHydratedRef.current = true;
+        checkAndApplyInitialSettings();
+    }
+  }, [isHydrated, checkAndApplyInitialSettings]);
+
   // Handle grid ready event
   const onGridReady = useCallback(() => {
-    setGridReady(true);
-    // No event listeners for automatic state saving
-    // Grid state will only be extracted when explicitly saving a profile
-
+    setGridReady(true); // Set state as well as ref
     console.log("Grid is ready.");
+    gridReadyRef.current = true; // Set the ref
 
     // Add event listeners for debugging (keep if useful)
     if (gridRef.current?.api) {
       // ... existing debug listeners ...
     }
 
-  }, [gridId, gridRef]); // Removed applySettingsToGrid from dependencies
+    // Check if initial settings can be applied now
+    checkAndApplyInitialSettings();
+
+  }, [gridId, gridRef, checkAndApplyInitialSettings, setGridReady]); // Add setGridReady dependency
 
   // Memoize the combined grid options passed to AgGridReact
   const memoizedGridOptions = useMemo(() => {
@@ -287,85 +507,6 @@ export function DataTable({
     ...defaultColDef,
     suppressKeyboardEvent: suppressKeyboardEvent // Now defined earlier
   }), [suppressKeyboardEvent]);
-
-  // ** Define applySettingsToGrid function BEFORE it is used **
-  // Define explicit function to apply store state to the grid
-  const applySettingsToGrid = useCallback(() => {
-    if (!gridReady || !gridRef.current?.api) {
-      console.log('Grid not ready or API not available, cannot apply settings');
-      return;
-    }
-
-    console.log('Applying settings to grid');
-
-    // Store a reference to the grid API to avoid null checks
-    const gridApi = gridRef.current.api;
-
-    // Get the LATEST state directly from the store when applying
-    const latestState = useGridStore.getState();
-    const latestStoredColumnDefs = latestState.columnDefs;
-    const latestColumnState = latestState.columnState;
-    const latestFilterModel = latestState.filterModel;
-    const latestGridOptions = latestState.gridOptions;
-
-    // Apply column definitions with state
-    if (latestStoredColumnDefs && latestStoredColumnDefs !== lastAppliedSettings.current.columnDefs) {
-      console.log('Applying column definitions with state');
-      gridApi.setGridOption('columnDefs', latestStoredColumnDefs);
-      lastAppliedSettings.current.columnDefs = latestStoredColumnDefs;
-    }
-
-    // Apply column state
-    if (latestColumnState && latestColumnState !== lastAppliedSettings.current.columnState) {
-      console.log('Applying column state');
-      gridApi.applyColumnState({
-        state: latestColumnState,
-        applyOrder: true
-      });
-       lastAppliedSettings.current.columnState = latestColumnState;
-    }
-
-    // Apply filter model
-    if (latestFilterModel && latestFilterModel !== lastAppliedSettings.current.filterModel) {
-      console.log('Applying filter model');
-      gridApi.setFilterModel(latestFilterModel);
-      lastAppliedSettings.current.filterModel = latestFilterModel;
-    }
-
-    // Apply grid options
-    // Check gridOptions reference before applying
-    if (latestGridOptions && latestGridOptions !== lastAppliedSettings.current.gridOptions) {
-      console.log('Applying grid options');
-       // FIX: Call applyGridOptions with correct arguments (assuming it's still needed alongside declarative props)
-       // Review if applyGridOptions utility is still necessary
-       // applyGridOptions(gridRef, gridId, latestGridOptions);
-      lastAppliedSettings.current.gridOptions = latestGridOptions;
-    }
-
-    // Refresh grid
-    console.log("Refreshing grid after explicit apply");
-    gridApi.refreshCells({force: true});
-    gridApi.redrawRows();
-
-    console.log('Settings applied to grid');
-
-    // Note: We removed comparison logic inside applyGridOptions calls
-    // and instead rely on lastAppliedSettings.current comparison here.
-  }, [
-    gridReady,
-    gridRef,
-    gridId, // gridId needed for applyGridOptions if restored
-   ]);
-
-  // Effect to apply initial settings once store is hydrated and grid is ready
-  const isHydrated = useGridStore.persist.hasHydrated();
-
-  useEffect(() => {
-    if (isHydrated && gridReady) {
-      console.log("Store hydrated and grid ready, applying initial settings.");
-      applySettingsToGrid();
-    }
-  }, [isHydrated, gridReady, applySettingsToGrid]);
 
   // Function to perform a batch update without refreshing the grid
   const batchUpdate = useCallback((updates: () => void) => {
@@ -599,6 +740,17 @@ export function DataTable({
     return nextCellPosition;
   }, [sanitizedGridOptions, gridRef]); // Add gridRef dependency
 
+  // Handler for numeric format change from Toolbar
+  const handleNumericFormatChange = useCallback((option: string) => {
+    console.log(`--> handleNumericFormatChange called with option: ${option}`); // LOG 1
+    setNumericFormatOption(option);
+    // Trigger grid update after state change
+    setTimeout(() => {
+      console.log('--> Triggering applySettingsToGrid from handleNumericFormatChange'); // LOG 2
+      applySettingsToGrid();
+    }, 0);
+  }, [setNumericFormatOption, applySettingsToGrid]);
+
   return (
     <div
       className={`flex h-full flex-col rounded-md border ${darkMode ? 'dark' : 'light'}`}
@@ -622,6 +774,8 @@ export function DataTable({
         profiles={profiles}
         selectedProfileId={selectedProfileId}
         onSelectProfile={handleSelectProfile}
+        numericFormatOption={numericFormatOption} // Pass current format
+        onNumericFormatChange={handleNumericFormatChange} // Pass handler
       />
 
       {/* AG Grid */}
