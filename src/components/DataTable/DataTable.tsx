@@ -1,17 +1,17 @@
 import { useRef, useCallback, useMemo, useEffect, useState } from "react";
-import { ModuleRegistry, ColDef, GridOptions, SuppressKeyboardEventParams, ValueFormatterParams } from "ag-grid-community";
+import { ModuleRegistry, ColDef, GridOptions } from "ag-grid-community";
 import { AllEnterpriseModule } from "ag-grid-enterprise";
 import { AgGridReact } from "ag-grid-react";
-import { DataTableToolbar } from "./Toolbar/DataTableToolbar";
 
-import { ProfilesDialog } from "./Settings/Profiles/ProfilesDialog";
-import { PropertyGridDialog } from "./Settings/General/PropertyGridDialog";
-import { ColumnSettingsDialog } from "./Settings/Columns/ColumnSettingsDialog";
+import { GridDialogManager } from "./components/GridDialogManager";
 import { useThemeSync } from "./hooks/useThemeSync";
 import { useGridStore } from "./store/gridStore";
-import { generateColumnDefsFromData, GridRowData, defaultColDef } from "./utils/dataTableHelpers";
+import { generateColumnDefsFromData, GridRowData } from "./utils/dataTableHelpers";
 import { createGridTheme, applyGridStyles, createGridTransitionsStyle } from "./utils/gridStyling";
-import { monospacefonts } from "./utils/constants";
+import { applyNumericFormattingToDefs } from "./utils/numericFormatting";
+import { sanitizeGridOptions, createKeyboardEventSuppressor, createCellNavigationHandler } from "./utils/gridStateUtils";
+import { GridCore } from "./components/GridCore";
+import { ToolbarContainer } from "./components/ToolbarContainer";
 import "./styles/gridOptions.css";
 
 ModuleRegistry.registerModules([AllEnterpriseModule]);
@@ -26,127 +26,7 @@ export interface DataTableProps {
   onThemeChange?: (theme: "light" | "dark" | "system") => void;
 }
 
-// --- Add numeric formatting helper functions HERE ---
-
-/**
- * Converts a decimal price to MBS tick format (points-32nds notation)
- */
-function decimalToTickFormat(decimalPrice: number | null | undefined): string {
-  if (decimalPrice == null || isNaN(decimalPrice)) return "";
-  const wholePoints = Math.floor(decimalPrice);
-  const fraction = decimalPrice - wholePoints;
-  const thirtySeconds = fraction * 32;
-  const wholeThirtySeconds = Math.floor(thirtySeconds);
-  const remainderIn256ths = Math.round((thirtySeconds - wholeThirtySeconds) * 8);
-
-  if (remainderIn256ths > 0) {
-    return `${wholePoints}-${wholeThirtySeconds}${remainderIn256ths}`;
-  } else {
-    return `${wholePoints}-${wholeThirtySeconds < 10 ? '0' + wholeThirtySeconds : wholeThirtySeconds}`;
-  }
-}
-
-/**
- * Formats large numbers with K, M, B suffixes.
- */
-function formatNumberKMB(num: number | null | undefined): string {
-  if (num == null || isNaN(num)) return "";
-  if (Math.abs(num) < 1000) {
-    return num.toString(); // No suffix needed
-  }
-  const si = [
-    { value: 1, symbol: "" },
-    { value: 1E3, symbol: "K" },
-    { value: 1E6, symbol: "M" },
-    { value: 1E9, symbol: "B" },
-    { value: 1E12, symbol: "T" } // Add Trillion if needed
-  ];
-  const rx = /\.0+$|(\.[0-9]*[1-9])0+$/;
-  let i;
-  for (i = si.length - 1; i > 0; i--) {
-    if (Math.abs(num) >= si[i].value) {
-      break;
-    }
-  }
-  return (num / si[i].value).toFixed(1).replace(rx, "$1") + si[i].symbol;
-}
-
-/**
- * Applies numeric formatting options to a list of column definitions.
- */
-const applyNumericFormattingToDefs = (defs: ColDef[], formatOption: string): ColDef[] => {
-  if (!defs) return [];
-
-  // Refined keyword list (removed 'id')
-  const numericKeywords = [
-    'price', 'amount', 'quantity', 'value', 'number',
-    'count', 'size', 'total', 'balance', 'rate', 'level',
-    'vol', 'pct', 'percent', 'chg', 'age', 'qty', 'cost'
-  ];
-
-  return defs.map((colDef: ColDef) => {
-    const fieldName = (colDef.field || colDef.colId || '').toLowerCase();
-    const type = colDef.type;
-    const isExplicitlyNumeric = Array.isArray(type) ? type.includes('numericColumn') : type === 'numericColumn';
-    // Check if type is defined AND is NOT numeric
-    const isExplicitlyNonNumeric = type !== undefined && !isExplicitlyNumeric;
-    // Only use keywords if type is completely undefined
-    const checkKeywords = type === undefined && numericKeywords.some(keyword => fieldName.includes(keyword));
-
-    // Determine if we should apply numeric formatting
-    const applyNumericFormat =
-        isExplicitlyNumeric || // Definitely numeric
-        checkKeywords;          // Type is undefined, but keywords match
-
-    // Only apply formatting if needed AND not explicitly non-numeric
-    if (applyNumericFormat && !isExplicitlyNonNumeric) {
-      let newValueFormatter: ((params: ValueFormatterParams) => string) | undefined = undefined;
-
-      switch (formatOption) {
-        case 'currency':
-          newValueFormatter = (params: ValueFormatterParams) => {
-            if (params.value == null || isNaN(params.value)) return '';
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(params.value);
-          };
-          break;
-        case 'dec0':
-          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(0);
-          break;
-        case 'dec1':
-          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(1);
-          break;
-        case 'dec2':
-          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(2);
-          break;
-        case 'dec3':
-          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(3);
-          break;
-        case 'dec4':
-          newValueFormatter = (params: ValueFormatterParams) => (params.value == null || isNaN(params.value)) ? '' : params.value.toFixed(4);
-          break;
-        case 'kmb': // Note: Was 'k', 'm', 'b' before, consolidated
-          newValueFormatter = (params: ValueFormatterParams) => formatNumberKMB(params.value);
-          break;
-        case 'tick':
-          newValueFormatter = (params: ValueFormatterParams) => decimalToTickFormat(params.value);
-          break;
-        case 'default':
-        default:
-          newValueFormatter = undefined;
-          break;
-      }
-
-      return {
-          ...colDef,
-          cellStyle: colDef.cellStyle,
-          valueFormatter: newValueFormatter
-      };
-    }
-
-    // Return original definition if no formatting applied
-    return colDef;
-  });
-};
+// Numeric formatting functions have been moved to utils/numericFormatting.ts
 
 // --- Rest of the DataTable component ---
 
@@ -162,30 +42,20 @@ export function DataTable({
   const spacing = useGridStore(state => state.spacing);
   const fontSize = useGridStore(state => state.fontSize);
   const selectedFont = useGridStore(state => state.selectedFont);
-  const gridOptions = useGridStore(state => state.gridOptions); // Needed for sanitizedGridOptions & handleSaveProfile
-  const profiles = useGridStore(state => state.profiles); // Needed for Toolbar
-  const selectedProfileId = useGridStore(state => state.selectedProfileId); // Needed for Toolbar & useEffect
-  const numericFormatOption = useGridStore(state => state.numericFormatOption);
+  const gridOptions = useGridStore(state => state.gridOptions); // Needed for sanitizedGridOptions
+  const selectedProfileId = useGridStore(state => state.selectedProfileId); // Needed for useEffect
 
-  // Select actions
-  const setSpacing = useGridStore(state => state.setSpacing);
-  const setFontSize = useGridStore(state => state.setFontSize);
-  const setSelectedFont = useGridStore(state => state.setSelectedFont);
-  const setColumnState = useGridStore(state => state.setColumnState);
-  const setColumnDefs = useGridStore(state => state.setColumnDefs);
-  const setFilterModel = useGridStore(state => state.setFilterModel);
-  const setSortModel = useGridStore(state => state.setSortModel); // Needed for handleSaveProfile
-  const setGridOptions = useGridStore(state => state.setGridOptions); // Needed for handleSaveProfile
-  const saveToProfile = useGridStore(state => state.saveToProfile);
-  const selectProfile = useGridStore(state => state.selectProfile);
-  const setNumericFormatOption = useGridStore(state => state.setNumericFormatOption);
+  // We don't need to access these actions directly anymore
+  // They are used in the ToolbarContainer component
 
   // Local state for UI components
+  const [gridReady, setGridReady] = useState(false);
+  const gridRef = useRef<AgGridReact>(null);
+
+  // Dialog state
   const [profilesDialogOpen, setProfilesDialogOpen] = useState(false);
   const [generalSettingsOpen, setGeneralSettingsOpen] = useState(false);
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
-  const [gridReady, setGridReady] = useState(false);
-  const gridRef = useRef<AgGridReact>(null);
 
   // Refs to manage initial load logic
   const gridReadyRef = useRef(false);
@@ -204,37 +74,8 @@ export function DataTable({
   // Create grid theme
   const gridTheme = useMemo(() => createGridTheme(selectedFont.value), [selectedFont.value]);
 
-  // Convert invalid grid options to valid ones
-  // This fixes warnings about invalid grid options
-  const sanitizedGridOptions = useMemo(() => {
-    if (!gridOptions) return {};
-
-    // Create a deep copy to avoid mutating the original object
-    const sanitized = JSON.parse(JSON.stringify(gridOptions));
-
-    // Remove or convert all invalid grid options
-    if ('suppressCellBorders' in sanitized) delete sanitized.suppressCellBorders;
-    if ('suppressHeaderBorders' in sanitized) delete sanitized.suppressHeaderBorders;
-    if ('enableCellChangeFlash' in sanitized) delete sanitized.enableCellChangeFlash;
-    if ('navigateToNextCellWhenAtLastCell' in sanitized) {
-      sanitized.navigateToNextCellOnLastCell = sanitized.navigateToNextCellWhenAtLastCell;
-      delete sanitized.navigateToNextCellWhenAtLastCell;
-    }
-    if ('enterMovesDown' in sanitized) {
-      sanitized.enterNavigatesVertically = sanitized.enterMovesDown;
-      delete sanitized.enterMovesDown;
-    }
-    if ('arrowKeysNavigateAfterEdit' in sanitized) {
-      sanitized.useCustomNavigation = sanitized.arrowKeysNavigateAfterEdit;
-      delete sanitized.arrowKeysNavigateAfterEdit;
-    }
-    if ('enterMovesDownAfterEdit' in sanitized) {
-      sanitized.enterNavigatesVerticallyAfterEdit = sanitized.enterMovesDownAfterEdit;
-      delete sanitized.enterMovesDownAfterEdit;
-    }
-
-    return sanitized;
-  }, [gridOptions]);
+  // Convert invalid grid options to valid ones using utility function
+  const sanitizedGridOptions = useMemo(() => sanitizeGridOptions(gridOptions), [gridOptions]);
 
   // Set up grid styling
   useEffect(() => {
@@ -253,44 +94,9 @@ export function DataTable({
     };
   }, [darkMode, selectedFont, gridId, fontSize, spacing]);
 
-  // Handle font change
-  const handleFontChangeCallback = useCallback((font: { name: string; value: string }) => {
-    setSelectedFont(font);
+  // These handlers have been moved to ToolbarContainer
 
-    // Apply font family directly to the grid
-    const gridElement = document.getElementById(gridId);
-    if (gridElement) {
-      gridElement.style.setProperty('--ag-font-family', font.value);
-    }
-  }, [gridId, setSelectedFont]);
-
-  // Handle spacing change
-  const handleSpacingChangeCallback = useCallback((value: number) => {
-    setSpacing(value);
-
-    // Apply spacing directly to the grid
-    const gridElement = document.getElementById(gridId);
-    if (gridElement) {
-      gridElement.style.setProperty('--ag-spacing', `${value}px`);
-    }
-  }, [gridId, setSpacing]);
-
-  // Handle font size change
-  const handleFontSizeChangeCallback = useCallback((value: number) => {
-    setFontSize(value);
-
-    // Apply font size directly to the grid
-    const gridElement = document.getElementById(gridId);
-    if (gridElement) {
-      gridElement.style.setProperty('--ag-font-size', `${value}px`);
-      gridElement.style.setProperty('--ag-header-font-size', `${value}px`);
-    }
-  }, [gridId, setFontSize]);
-
-  // REMOVED: Unused state variable
-  // const [suppressGridRefresh, setSuppressGridRefresh] = useState(false);
-  // Restore setter for use in batchUpdate, ignore state variable
-  const [, setSuppressGridRefresh] = useState(false);
+  // We don't need this state variable anymore
 
   // Track the last applied settings to avoid unnecessary updates
   // Linter flags 'any', but using specific types might require importing them
@@ -394,8 +200,7 @@ export function DataTable({
     gridApi.redrawRows();
     console.log('Settings applied to grid');
   }, [
-    gridRef,
-    gridId,
+    gridRef
    ]);
 
   // Function to check conditions and apply initial settings ONCE
@@ -436,7 +241,7 @@ export function DataTable({
     // Check if initial settings can be applied now
     checkAndApplyInitialSettings();
 
-  }, [gridId, gridRef, checkAndApplyInitialSettings, setGridReady]); // Add setGridReady dependency
+  }, [gridRef, checkAndApplyInitialSettings, setGridReady]); // Add setGridReady dependency
 
   // Memoize the combined grid options passed to AgGridReact
   const memoizedGridOptions = useMemo(() => {
@@ -448,153 +253,16 @@ export function DataTable({
     // Dependencies ensure this recalculates if either source changes
   }, [externalGridOptions, sanitizedGridOptions]);
 
-  // ** Moved suppressKeyboardEvent definition earlier **
-  const suppressKeyboardEvent = useCallback((params: SuppressKeyboardEventParams) => {
-    const { event, editing, api } = params;
-    console.log('suppressKeyboardEvent called:', {
-      key: event.key,
-      editing,
-      type: event.type,
-      target: event.target instanceof HTMLElement ? event.target.tagName : 'unknown'
-    });
+  // Create keyboard event suppressor using utility function
+  const suppressKeyboardEvent = useCallback((params: any) => {
+    return createKeyboardEventSuppressor(sanitizedGridOptions, gridRef)(params);
+  }, [sanitizedGridOptions, gridRef]);
 
-    // Handle arrow keys during editing
-    if (editing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-      // Check if custom navigation after edit is enabled in grid options
-      const useCustomNavigation = sanitizedGridOptions?.useCustomNavigation === true;
-      console.log('useCustomNavigation enabled:', useCustomNavigation);
+  // This function has been moved to ToolbarContainer
 
-      // If the feature is disabled, don't suppress the event
-      if (!useCustomNavigation) {
-        console.log('Feature disabled, not handling arrow keys');
-        return false;
-      }
+  // This handler has been moved to ToolbarContainer
 
-      // Stop editing and save changes
-      console.log('Stopping edit and saving changes');
-      api.stopEditing();
-
-      // Get the current focused cell
-      const focusedCell = api.getFocusedCell();
-      if (!focusedCell) {
-        console.log('No focused cell found');
-        return true; // Suppress the event anyway
-      }
-
-      console.log('Current focused cell:', focusedCell);
-
-      // Calculate the next row index
-      const nextRowIndex = event.key === 'ArrowUp' ?
-        focusedCell.rowIndex - 1 :
-        focusedCell.rowIndex + 1;
-
-      console.log('Moving to row:', nextRowIndex);
-
-      // Set focus to the next cell
-      setTimeout(() => {
-        api.setFocusedCell(nextRowIndex, focusedCell.column);
-      }, 0);
-
-      // Suppress the default event
-      return true;
-    }
-
-    // Don't suppress other events
-    return false;
-  }, [sanitizedGridOptions]);
-
-  // Memoize defaultColDef to ensure stability
-  const memoizedDefaultColDef = useMemo(() => ({
-    ...defaultColDef,
-    suppressKeyboardEvent: suppressKeyboardEvent // Now defined earlier
-  }), [suppressKeyboardEvent]);
-
-  // Function to perform a batch update without refreshing the grid
-  const batchUpdate = useCallback((updates: () => void) => {
-    // Set the suppress flag to prevent grid refreshes during the batch update
-    setSuppressGridRefresh(true);
-
-    try {
-      // Execute the updates
-      updates();
-    } finally {
-      // Use requestAnimationFrame to reset the suppress flag after the current render cycle
-      // This ensures that the flag is reset after all the effects have been skipped
-      requestAnimationFrame(() => {
-        setSuppressGridRefresh(false);
-        console.log('Grid refresh suppression disabled');
-      });
-    }
-  }, [setSuppressGridRefresh]);
-
-  // Save current grid state to profile without refreshing the grid
-  const handleSaveProfile = useCallback(() => {
-    console.log("--- handleSaveProfile START ---");
-    if (gridRef.current?.api) {
-      console.log('Saving profile - extracting current grid state');
-
-      // Explicitly extract current grid state
-      const columnState = gridRef.current.api.getColumnState() || [];
-      console.log('Saving column state:', columnState);
-
-      // Get column definitions with current widths from column state
-      const currentColDefs = gridRef.current.api.getColumnDefs() || [];
-
-      // Merge column state information (width, etc.) into column definitions
-      const enhancedColumnDefs = currentColDefs.map((colDef: any) => {
-        // Find the matching column state
-        const colState = columnState.find((state: any) =>
-          state.colId === (colDef.colId || colDef.field)
-        );
-
-        // If we have state for this column, merge it with the column definition
-        if (colState) {
-          return {
-            ...colDef,
-            // Add width from column state if it exists
-            width: colState.width,
-            // Add flex from column state if it exists
-            flex: colState.flex,
-            // Add visibility from column state
-            hide: colState.hide,
-            // Add pinned state from column state
-            pinned: colState.pinned
-          };
-        }
-
-        return colDef;
-      });
-
-      const filterModel = gridRef.current.api.getFilterModel() || {};
-      const sortModel = columnState.filter(col => col.sort).map(col => ({
-        colId: col.colId,
-        sort: col.sort,
-        sortIndex: col.sortIndex
-      }));
-
-      // Prepare grid options (use sanitizedGridOptions for consistency)
-      const updatedGridOptions = sanitizedGridOptions; // Already includes external + store
-
-      // Perform a batch update without refreshing the grid
-      batchUpdate(() => {
-        // Update the store with the current grid state
-        setColumnState(columnState);
-        setColumnDefs(enhancedColumnDefs); // Save the definitions *with* state applied
-        setFilterModel(filterModel);
-        setSortModel(sortModel);
-        setGridOptions(updatedGridOptions); // Save the combined & sanitized options
-
-        // Now save to profile - this will update the profile in the store
-        // with all the current state including column widths
-        saveToProfile();
-
-        console.log('Profile saved with column state and enhanced column definitions');
-      });
-       // NO trigger needed here, saving doesn't update the *live* grid immediately
-    }
-  }, [saveToProfile, setColumnState, setColumnDefs, setFilterModel, setSortModel, setGridOptions, sanitizedGridOptions, batchUpdate]); // Use sanitizedGridOptions
-
-  // Open profiles dialog
+  // These handlers have been moved to ToolbarContainer or GridDialogManager
   const handleManageProfiles = useCallback(() => {
     setProfilesDialogOpen(true);
   }, []);
@@ -609,226 +277,53 @@ export function DataTable({
     setColumnSettingsOpen(true);
   }, []);
 
-  // Handle profile selection
-  const handleSelectProfile = useCallback((id: string) => {
-    console.log('Switching to profile:', id);
-
-    // Completely reset the grid before applying new profile settings
-    if (gridRef.current?.api) {
-      // Use batch update to prevent multiple refreshes during reset and profile selection
-      batchUpdate(() => {
-        // Store a reference to the grid API to avoid null checks
-        const gridApi = gridRef.current?.api;
-        if (!gridApi) return;
-
-        // 1. Reset all column state
-        // This completely clears all column state including widths, visibility, etc.
-        console.log('Completely resetting column state before switching profiles');
-        gridApi.applyColumnState({
-          defaultState: {
-            sort: null,
-            width: undefined, // Clear width
-            flex: undefined,  // Clear flex
-            hide: false,      // Show all columns
-            pinned: null      // Unpin all columns
-          },
-          applyOrder: true,
-          state: [] // Empty state to clear everything
-        });
-
-        // 2. Clear all filter models
-        gridApi.setFilterModel({});
-
-        // 3. Reset column definitions to bare minimum
-        const currentColDefs = gridApi.getColumnDefs();
-        if (currentColDefs) {
-          // Create stripped-down column definitions with only essential properties
-          // Use type assertion to avoid TypeScript errors
-          const bareColumnDefs = currentColDefs.map((colDef: any) => ({
-            field: colDef.field,
-            colId: colDef.colId || colDef.field,
-            headerName: colDef.headerName
-          }));
-
-          // Apply the bare column definitions
-          gridApi.setGridOption('columnDefs', bareColumnDefs);
-        }
-
-        // 4. Reset any other grid state
-        gridApi.resetRowHeights();
-        gridApi.redrawRows();
-
-        // 5. Clear any custom styling
-        gridApi.refreshHeader();
-
-        console.log('Grid state completely reset before switching profiles');
-
-        // Now select the new profile - this will hydrate the grid store with the profile settings
-        // This is done inside the batch update to prevent multiple refreshes
-        selectProfile(id);
-      });
-    } else {
-      // If grid is not ready, just select the profile (apply will happen on grid ready)
-      selectProfile(id);
-    }
-
-    // Trigger settings application *after* the batch update logic and store update
-    // Use setTimeout to ensure it runs after the current render cycle triggered by batchUpdate state changes
-    setTimeout(() => {
-      console.log("Triggering applySettingsToGrid after profile switch");
-      applySettingsToGrid();
-    }, 0);
-  }, [selectProfile, batchUpdate, applySettingsToGrid]); // Add applySettingsToGrid
-
-  // Custom navigation handler to implement cell navigation behavior
+  // Create cell navigation handler using utility function
   const navigateToNextCell = useCallback((params: any) => {
-    // Add null check for gridRef.current.api
-    const api = gridRef.current?.api;
-    // Destructure params *after* the api check
-    const { nextCellPosition, previousCellPosition, event } = params;
-    // FIX: Return default *after* destructuring if api not ready
-    if (!api) return nextCellPosition;
+    return createCellNavigationHandler(sanitizedGridOptions, gridRef)(params);
+  }, [sanitizedGridOptions, gridRef]);
 
-    // If there's no next cell position (we're at an edge), decide what to do based on settings
-    if (!nextCellPosition) {
-      // Check if we should navigate to the next row or column when at the last cell
-      const navigateToNextCellOnLastCell = sanitizedGridOptions?.navigateToNextCellOnLastCell === true;
-
-      if (navigateToNextCellOnLastCell && previousCellPosition) {
-        // Determine direction based on the key pressed
-        const isTabKey = event?.key === 'Tab';
-        const isShiftKey = event?.shiftKey === true;
-        const isEnterKey = event?.key === 'Enter';
-
-        // Handle Tab key navigation (horizontal movement)
-        if (isTabKey) {
-          const direction = isShiftKey ? -1 : 1;
-          // Moving right at the rightmost cell - wrap to the next row
-          if (direction > 0 && previousCellPosition.column.isPinned !== 'right') {
-            const firstCol = api.getAllDisplayedColumns()?.[0]; // Get first displayed column
-            return {
-              rowIndex: previousCellPosition.rowIndex + 1,
-              column: firstCol || previousCellPosition.column, // Fallback if no columns
-              rowPinned: previousCellPosition.rowPinned
-            };
-          }
-          // Moving left at the leftmost cell - wrap to the previous row
-          else if (direction < 0 && previousCellPosition.column.isPinned !== 'left') {
-             const allCols = api.getAllDisplayedColumns();
-             const lastCol = allCols?.[allCols.length - 1]; // Get last displayed column
-            return {
-              rowIndex: previousCellPosition.rowIndex - 1,
-              column: lastCol || previousCellPosition.column, // Fallback if no columns
-              rowPinned: previousCellPosition.rowPinned
-            };
-          }
-        }
-
-        // Handle Enter key navigation (vertical movement) if enterNavigatesVertically is enabled
-        const enterNavigatesVertically = sanitizedGridOptions?.enterNavigatesVertically === true;
-        if (isEnterKey && enterNavigatesVertically) {
-          const direction = isShiftKey ? -1 : 1;
-          return {
-            rowIndex: previousCellPosition.rowIndex + direction,
-            column: previousCellPosition.column,
-            rowPinned: previousCellPosition.rowPinned
-          };
-        }
-      }
-    }
-
-    // Return the default next cell position
-    return nextCellPosition;
-  }, [sanitizedGridOptions, gridRef]); // Add gridRef dependency
-
-  // Handler for numeric format change from Toolbar
-  const handleNumericFormatChange = useCallback((option: string) => {
-    console.log(`--> handleNumericFormatChange called with option: ${option}`); // LOG 1
-    setNumericFormatOption(option);
-    // Trigger grid update after state change
-    setTimeout(() => {
-      console.log('--> Triggering applySettingsToGrid from handleNumericFormatChange'); // LOG 2
-      applySettingsToGrid();
-    }, 0);
-  }, [setNumericFormatOption, applySettingsToGrid]);
+  // This handler has been moved to ToolbarContainer
 
   return (
     <div
       className={`flex h-full flex-col rounded-md border ${darkMode ? 'dark' : 'light'}`}
       data-theme={darkMode ? 'dark' : 'light'}
     >
-      <DataTableToolbar
-        selectedFont={selectedFont}
-        setSelectedFont={handleFontChangeCallback}
-        monospacefonts={monospacefonts}
-        spacing={spacing}
-        setSpacing={handleSpacingChangeCallback}
-        fontSize={fontSize}
-        setFontSize={handleFontSizeChangeCallback}
-        isDark={darkMode}
-        onThemeChange={onThemeChangeHandler}
+      <ToolbarContainer
         gridId={gridId}
-        onSaveProfile={handleSaveProfile}
-        onManageProfiles={handleManageProfiles}
-        onGeneralSettings={handleGeneralSettings}
-        onColumnSettings={handleColumnSettings}
-        profiles={profiles}
-        selectedProfileId={selectedProfileId}
-        onSelectProfile={handleSelectProfile}
-        numericFormatOption={numericFormatOption} // Pass current format
-        onNumericFormatChange={handleNumericFormatChange} // Pass handler
+        gridRef={gridRef}
+        darkMode={darkMode || false}
+        onThemeChange={onThemeChangeHandler}
+        sanitizedGridOptions={sanitizedGridOptions}
+        applySettings={applySettingsToGrid}
+        openProfilesDialog={handleManageProfiles}
+        openGeneralSettingsDialog={handleGeneralSettings}
+        openColumnSettingsDialog={handleColumnSettings}
       />
 
       {/* AG Grid */}
-      <div id={gridId} className="ag-theme-quartz flex-1">
-        {themeReady && (
-          <AgGridReact
-            ref={gridRef}
-            theme={gridTheme}
-            columnDefs={columnDefs} // Assuming this is memoized correctly upstream or stable
-            rowData={rowData} // Assuming this is memoized correctly upstream or stable
-            defaultColDef={memoizedDefaultColDef} // Use memoized version
-            sideBar={true}
-            domLayout="normal"
-            className="h-full w-full"
-            onGridReady={onGridReady}
-            stopEditingWhenCellsLoseFocus={false}
-            navigateToNextCell={navigateToNextCell}
-            // Apply the memoized combined options object
-            {...memoizedGridOptions} // Use memoized version
-          />
-        )}
-      </div>
-
-      <ProfilesDialog
-        open={profilesDialogOpen}
-        onOpenChange={setProfilesDialogOpen}
-      />
-
-      {/* Use the new PropertyGridDialog instead of GeneralSettingsDialog */}
-      <PropertyGridDialog
-        open={generalSettingsOpen}
-        // Trigger settings application when dialog is closed (proxy for save)
-        onOpenChange={(isOpen) => {
-          setGeneralSettingsOpen(isOpen);
-          if (!isOpen) {
-            console.log("Triggering settings apply after General Settings close");
-            applySettingsToGrid();
-          }
-        }}
-      />
-
-      <ColumnSettingsDialog
-        open={columnSettingsOpen}
-         // Trigger settings application when dialog is closed (proxy for save)
-        onOpenChange={(isOpen) => {
-          setColumnSettingsOpen(isOpen);
-          if (!isOpen) {
-             console.log("Triggering settings apply after Column Settings close");
-             applySettingsToGrid();
-          }
-        }}
+      <GridCore
+        gridId={gridId}
         gridRef={gridRef}
+        gridTheme={gridTheme}
+        columnDefs={columnDefs}
+        rowData={rowData}
+        gridOptions={memoizedGridOptions}
+        onGridReady={onGridReady}
+        themeReady={themeReady}
+        suppressKeyboardEvent={suppressKeyboardEvent}
+        navigateToNextCell={navigateToNextCell}
+      />
+
+      <GridDialogManager
+        gridRef={gridRef}
+        applySettings={applySettingsToGrid}
+        profilesDialogOpen={profilesDialogOpen}
+        generalSettingsOpen={generalSettingsOpen}
+        columnSettingsOpen={columnSettingsOpen}
+        setProfilesDialogOpen={setProfilesDialogOpen}
+        setGeneralSettingsOpen={setGeneralSettingsOpen}
+        setColumnSettingsOpen={setColumnSettingsOpen}
       />
     </div>
   );
