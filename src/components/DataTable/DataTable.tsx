@@ -11,7 +11,7 @@ import { useThemeSync } from "./hooks/useThemeSync";
 import { useGridStore } from "./store/gridStore";
 import { generateColumnDefsFromData, GridRowData, defaultColDef } from "./utils/dataTableHelpers";
 import { createGridTheme, applyGridStyles, createGridTransitionsStyle } from "./utils/gridStyling";
-import { monospacefonts, DEFAULT_SPACING, DEFAULT_FONT_SIZE } from "./utils/constants";
+import { monospacefonts } from "./utils/constants";
 import "./styles/gridOptions.css";
 
 ModuleRegistry.registerModules([AllEnterpriseModule]);
@@ -77,20 +77,29 @@ function formatNumberKMB(num: number | null | undefined): string {
 const applyNumericFormattingToDefs = (defs: ColDef[], formatOption: string): ColDef[] => {
   if (!defs) return [];
 
+  // Refined keyword list (removed 'id')
   const numericKeywords = [
-    'price', 'amount', 'quantity', 'value', 'id', 'number',
+    'price', 'amount', 'quantity', 'value', 'number',
     'count', 'size', 'total', 'balance', 'rate', 'level',
     'vol', 'pct', 'percent', 'chg', 'age', 'qty', 'cost'
   ];
 
-  return defs.map((colDef: any) => {
+  return defs.map((colDef: ColDef) => {
     const fieldName = (colDef.field || colDef.colId || '').toLowerCase();
-    const isPotentiallyNumeric = numericKeywords.some(keyword => fieldName.includes(keyword));
-    const isNumericType = Array.isArray(colDef.type) ? colDef.type.includes('numericColumn') : colDef.type === 'numericColumn';
+    const type = colDef.type;
+    const isExplicitlyNumeric = Array.isArray(type) ? type.includes('numericColumn') : type === 'numericColumn';
+    // Check if type is defined AND is NOT numeric
+    const isExplicitlyNonNumeric = type !== undefined && !isExplicitlyNumeric;
+    // Only use keywords if type is completely undefined
+    const checkKeywords = type === undefined && numericKeywords.some(keyword => fieldName.includes(keyword));
 
-    // Only apply to numeric columns
-    if (isNumericType || isPotentiallyNumeric) {
-      const newCellStyle = { ...colDef.cellStyle, textAlign: 'right' };
+    // Determine if we should apply numeric formatting
+    const applyNumericFormat =
+        isExplicitlyNumeric || // Definitely numeric
+        checkKeywords;          // Type is undefined, but keywords match
+
+    // Only apply formatting if needed AND not explicitly non-numeric
+    if (applyNumericFormat && !isExplicitlyNonNumeric) {
       let newValueFormatter: ((params: ValueFormatterParams) => string) | undefined = undefined;
 
       switch (formatOption) {
@@ -129,20 +138,12 @@ const applyNumericFormattingToDefs = (defs: ColDef[], formatOption: string): Col
 
       return {
           ...colDef,
-          cellStyle: newCellStyle,
+          cellStyle: colDef.cellStyle,
           valueFormatter: newValueFormatter
       };
     }
-    // Non-numeric column: Return original definition, potentially removing alignment if it was previously numeric
-    else if (colDef.cellStyle?.textAlign === 'right') {
-        const { textAlign, ...restCellStyle } = colDef.cellStyle;
-        return {
-            ...colDef,
-            cellStyle: Object.keys(restCellStyle).length > 0 ? restCellStyle : undefined,
-            valueFormatter: colDef.valueFormatter
-        };
-    }
 
+    // Return original definition if no formatting applied
     return colDef;
   });
 };
