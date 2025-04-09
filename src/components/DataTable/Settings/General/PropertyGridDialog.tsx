@@ -4,10 +4,13 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogHeader,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Settings, X } from "lucide-react";
+import { Settings, XCircle, Save, Circle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { useGrid } from "../../hooks/useGridStore";
 import {
   PropertyGrid,
@@ -179,135 +182,88 @@ export function PropertyGridDialog({ open, onOpenChange }: PropertyGridDialogPro
   // Convert grid options to property items
   const properties = gridOptionsToProperties(formValues);
 
+  const hasChanges = changedProperties.size > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] w-[700px] p-0 gap-0 rounded-xl overflow-hidden general-settings-dialog border-none shadow-xl bg-gradient-to-b from-background to-muted/30">
-        {/* The general-settings-dialog class is used to target and hide the default close button with CSS */}
-        <div className="flex flex-col h-[80vh] max-h-[800px] min-h-[500px]">
-          {/* Fixed Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border/40 z-10 bg-gradient-to-r from-background to-background/80">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Settings className="h-4 w-4 text-primary" />
+      <DialogContent 
+        className="general-settings-dialog max-w-[900px] max-h-[min(700px,calc(100vh-40px))] h-auto p-0 gap-0 flex flex-col"
+        onInteractOutside={(e) => {
+          // Prevent closing on outside clicks if there are pending changes
+          if (hasChanges) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <div className="flex-none">
+          <DialogHeader className="px-4 pt-3 pb-1 flex flex-row justify-between items-center">
+            <DialogTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Settings className="h-4 w-4 text-primary" />
+              Grid Settings
+            </DialogTitle>
+          </DialogHeader>
+          <Separator className="mb-0.5" />
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+          <PropertyGrid
+            properties={properties}
+            categories={gridCategories}
+            changedProperties={changedProperties}
+            onPropertyChange={handlePropertyChange}
+          />
+        </div>
+
+        <DialogFooter className="flex-none py-1.5 px-3 border-t bg-muted/10">
+          <div className="flex items-center gap-1 mr-auto">
+            {hasChanges && (
+              <div className="text-xs text-amber-600 flex items-center gap-1">
+                <Circle className="h-1.5 w-1.5 fill-amber-600" />
+                Unsaved changes
               </div>
-              <div>
-                <span className="text-lg font-semibold tracking-tight">Grid Settings</span>
-                <p className="text-xs text-muted-foreground mt-0.5">Configure your grid appearance and behavior</p>
-              </div>
-              {changedProperties.size > 0 && (
-                <Badge variant="outline" className="ml-2 bg-primary/10 text-primary text-xs rounded-full px-2.5">
-                  {changedProperties.size} {changedProperties.size === 1 ? 'Change' : 'Changes'}
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleUndo}
-                  disabled={undoStack.length === 0}
-                  title="Undo"
-                  className="h-8 w-8 rounded-full hover:bg-muted"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleRedo}
-                  disabled={redoStack.length === 0}
-                  title="Redo"
-                  className="h-8 w-8 rounded-full hover:bg-muted"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
-                </Button>
-              </div>
+            )}
+            <div className="flex items-center gap-1">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                disabled={changedProperties.size === 0}
-                className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
+                variant="ghost"
+                size="icon"
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                title="Undo"
+                className="h-6 w-6 rounded-full hover:bg-muted"
               >
-                Reset to Defaults
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onOpenChange(false)}
-                className="h-8 w-8 rounded-full hover:bg-muted"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                title="Redo"
+                className="h-6 w-6 rounded-full hover:bg-muted"
               >
-                <X className="h-4 w-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
               </Button>
             </div>
           </div>
-
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-hidden">
-            <PropertyGrid
-              properties={properties}
-              categories={gridCategories}
-              changedProperties={changedProperties}
-              onPropertyChange={handlePropertyChange}
-            />
-          </div>
-
-          {/* Fixed Footer */}
-          <div className="border-t border-border/40 px-5 py-4 flex items-center justify-between z-10 bg-gradient-to-r from-background to-background/80">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleExport}
-                className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
-              >
-                Export Settings
-              </Button>
-              <label htmlFor="import-settings" className="cursor-pointer">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    document.getElementById('import-settings')?.click();
-                  }}
-                  className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
-                >
-                  Import Settings
-                </Button>
-                <input
-                  id="import-settings"
-                  type="file"
-                  className="hidden"
-                  accept=".json"
-                  onChange={handleImport}
-                />
-              </label>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                size="sm"
-                className="rounded-full text-xs h-8 px-3 border-border/60 hover:bg-muted"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={changedProperties.size === 0}
-                size="sm"
-                className="rounded-full text-xs h-8 px-3 bg-primary hover:bg-primary/90"
-              >
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCancel}
+            className="h-6 text-xs mr-1.5"
+          >
+            <XCircle className="h-3 w-3 mr-1" />
+            Cancel
+          </Button>
+          <Button 
+            size="sm"
+            onClick={handleSave} 
+            disabled={!hasChanges}
+            className="h-6 text-xs"
+          >
+            <Save className="h-3 w-3 mr-1" />
+            Save
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useGrid } from "../../hooks/useGridStore";
 import {
@@ -29,8 +36,22 @@ import {
   AlignCenter,
   AlignRight,
   Columns,
+  Info,
+  Save,
+  XCircle,
+  Eye,
+  EyeOff,
+  ArrowUpDown,
+  Lock,
+  Unlock,
+  Circle,
+  Settings2,
+  Paintbrush,
+  Type,
+  Component,
 } from "lucide-react";
 import { BorderStyleEditor } from "./BorderStyleEditor";
+import { Checkbox } from "@/components/ui/checkbox";
 import "../settings-dialogs.css";
 
 interface ColumnSettingsDialogProps {
@@ -44,6 +65,8 @@ type TabType = "header" | "cell" | "value" | "component";
 interface SidebarItem {
   id: TabType;
   label: string;
+  icon: React.ReactNode;
+  description: string;
 }
 
 export function ColumnSettingsDialog({
@@ -64,12 +87,34 @@ export function ColumnSettingsDialog({
   const [searchTerm, setSearchTerm] = useState("");
 
   // Define sidebar items based on the selected column
-  const sidebarItems: SidebarItem[] = [
-    { id: "header", label: "Header Settings" },
-    { id: "cell", label: "Cell Formatting" },
-    { id: "value", label: "Value Formatting" },
-    { id: "component", label: "Component Config" },
-  ];
+  const sidebarItems: SidebarItem[] = useMemo(() => [
+    { 
+      id: "header", 
+      label: "Header Settings", 
+      icon: <Settings2 className="h-4 w-4" />,
+      description: "Configure column header appearance and styling"
+    },
+    { 
+      id: "cell", 
+      label: "Cell Formatting", 
+      icon: <Paintbrush className="h-4 w-4" />,
+      description: "Style cells with colors, borders, and alignment options"
+    },
+    { 
+      id: "value", 
+      label: "Value Formatting", 
+      icon: <Type className="h-4 w-4" />,
+      description: "Set number formats, date formats, and value transformations"
+    },
+    { 
+      id: "component", 
+      label: "Component Config",
+      icon: <Component className="h-4 w-4" />,
+      description: "Configure cell renderers, editors, and advanced options"
+    },
+  ], []);
+
+  // ... rest of your state and useEffect blocks remain the same
   const [headerSettings, setHeaderSettings] = useState({
     text: "",
     alignment: "left",
@@ -131,6 +176,7 @@ export function ColumnSettingsDialog({
     dateFormat: "MM/DD/YYYY",
     useCustomFormat: false,
     customFormat: "",
+    dataType: "text",
   });
 
   const [componentSettings, setComponentSettings] = useState({
@@ -229,6 +275,425 @@ export function ColumnSettingsDialog({
     [hasChanges, onOpenChange],
   );
 
+  // Handle column selection
+  const handleColumnSelect = useCallback((colId: string) => {
+    // Set the selected column
+    setSelectedColumn(colId);
+
+    // Find the column data
+    const col = columns.find((c) => c.colId === colId);
+    if (!col) return;
+
+    // Find the matching column definition for more details
+    const colDef = columnDefs.find(
+      (def) => def.field === colId || def.colId === colId
+    );
+
+    console.log("Found column definition for selection:", colDef);
+
+    // Update header settings
+    const headerText = colDef?.headerName || col.headerName || col.colId;
+    console.log(`Setting header text to: ${headerText} for column ${colId}`);
+
+    // Create a complete set of header settings from the saved column definition
+    const newHeaderSettings = {
+      // Start with defaults
+      ...headerSettings,
+      // Update with the settings from the column definition
+      text: headerText,
+    };
+
+    // Apply header alignment if it exists
+    if (colDef?.headerStyle?.justifyContent) {
+      if (colDef.headerStyle.justifyContent === "center") {
+        newHeaderSettings.alignment = "center";
+      } else if (colDef.headerStyle.justifyContent === "flex-end") {
+        newHeaderSettings.alignment = "right";
+      } else {
+        newHeaderSettings.alignment = "left";
+      }
+      console.log(`Setting header alignment to: ${newHeaderSettings.alignment}`);
+    } else if (colDef?.headerClass) {
+      // Check for alignment in the header class
+      if (colDef.headerClass.includes("center")) {
+        newHeaderSettings.alignment = "center";
+      } else if (colDef.headerClass.includes("right")) {
+        newHeaderSettings.alignment = "right";
+      } else {
+        newHeaderSettings.alignment = "left";
+      }
+      console.log(`Setting header alignment from class to: ${newHeaderSettings.alignment}`);
+    }
+
+    // Apply other header styles if they exist
+    if (colDef?.headerStyle) {
+      if (colDef.headerStyle.color)
+        newHeaderSettings.textColor = colDef.headerStyle.color;
+      if (colDef.headerStyle.backgroundColor)
+        newHeaderSettings.backgroundColor = colDef.headerStyle.backgroundColor;
+      if (colDef.headerStyle.fontFamily)
+        newHeaderSettings.fontFamily = colDef.headerStyle.fontFamily;
+      if (colDef.headerStyle.fontSize) {
+        // Extract the number from fontSize (e.g., "14px" -> 14)
+        const fontSizeMatch = colDef.headerStyle.fontSize.match(/(\d+)/);
+        if (fontSizeMatch) {
+          newHeaderSettings.fontSize = parseInt(fontSizeMatch[1]);
+        }
+      }
+      if (colDef.headerStyle.fontWeight)
+        newHeaderSettings.fontWeight = colDef.headerStyle.fontWeight;
+      if (colDef.headerStyle.fontStyle)
+        newHeaderSettings.fontStyle = colDef.headerStyle.fontStyle;
+
+      // Header Border styles
+      // Border top
+      if (colDef.headerStyle.borderTop) {
+        if (colDef.headerStyle.borderTop !== "none") {
+          newHeaderSettings.borderTop = true;
+          // Parse the border string (e.g. "1px solid #cccccc")
+          const borderMatch = colDef.headerStyle.borderTop.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newHeaderSettings.borderTopWidth = parseInt(borderMatch[1]);
+            newHeaderSettings.borderTopStyle = borderMatch[2];
+            newHeaderSettings.borderTopColor = borderMatch[3];
+          }
+        } else {
+          newHeaderSettings.borderTop = false;
+        }
+      }
+
+      // Border right
+      if (colDef.headerStyle.borderRight) {
+        if (colDef.headerStyle.borderRight !== "none") {
+          newHeaderSettings.borderRight = true;
+          const borderMatch = colDef.headerStyle.borderRight.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newHeaderSettings.borderRightWidth = parseInt(borderMatch[1]);
+            newHeaderSettings.borderRightStyle = borderMatch[2];
+            newHeaderSettings.borderRightColor = borderMatch[3];
+          }
+        } else {
+          newHeaderSettings.borderRight = false;
+        }
+      }
+
+      // Border bottom
+      if (colDef.headerStyle.borderBottom) {
+        if (colDef.headerStyle.borderBottom !== "none") {
+          newHeaderSettings.borderBottom = true;
+          const borderMatch = colDef.headerStyle.borderBottom.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newHeaderSettings.borderBottomWidth = parseInt(borderMatch[1]);
+            newHeaderSettings.borderBottomStyle = borderMatch[2];
+            newHeaderSettings.borderBottomColor = borderMatch[3];
+          }
+        } else {
+          newHeaderSettings.borderBottom = false;
+        }
+      }
+
+      // Border left
+      if (colDef.headerStyle.borderLeft) {
+        if (colDef.headerStyle.borderLeft !== "none") {
+          newHeaderSettings.borderLeft = true;
+          const borderMatch = colDef.headerStyle.borderLeft.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newHeaderSettings.borderLeftWidth = parseInt(borderMatch[1]);
+            newHeaderSettings.borderLeftStyle = borderMatch[2];
+            newHeaderSettings.borderLeftColor = borderMatch[3];
+          }
+        } else {
+          newHeaderSettings.borderLeft = false;
+        }
+      }
+    }
+
+    // Update header settings state
+    setHeaderSettings(newHeaderSettings);
+
+    // Create a complete set of cell settings from the saved column definition
+    const newCellSettings = {
+      // Start with defaults
+      ...cellSettings,
+    };
+
+    // Apply cell styles if they exist
+    if (colDef?.cellStyle) {
+      // Cell alignment
+      if (colDef.cellStyle.textAlign) {
+        newCellSettings.alignment = colDef.cellStyle.textAlign;
+        console.log(`Setting cell alignment to: ${newCellSettings.alignment}`);
+      }
+
+      // Other cell styles
+      if (colDef.cellStyle.color)
+        newCellSettings.textColor = colDef.cellStyle.color;
+      if (colDef.cellStyle.backgroundColor)
+        newCellSettings.backgroundColor = colDef.cellStyle.backgroundColor;
+      if (colDef.cellStyle.fontFamily)
+        newCellSettings.fontFamily = colDef.cellStyle.fontFamily;
+      if (colDef.cellStyle.fontSize) {
+        // Extract the number from fontSize (e.g., "14px" -> 14)
+        const fontSizeMatch = colDef.cellStyle.fontSize.match(/(\d+)/);
+        if (fontSizeMatch) {
+          newCellSettings.fontSize = parseInt(fontSizeMatch[1]);
+        }
+      }
+      if (colDef.cellStyle.fontWeight)
+        newCellSettings.fontWeight = colDef.cellStyle.fontWeight;
+      if (colDef.cellStyle.fontStyle)
+        newCellSettings.fontStyle = colDef.cellStyle.fontStyle;
+
+      // Border styles
+      // Border top
+      if (colDef.cellStyle.borderTop) {
+        if (colDef.cellStyle.borderTop !== "none") {
+          newCellSettings.borderTop = true;
+          // Parse the border string (e.g. "1px solid #cccccc")
+          const borderMatch = colDef.cellStyle.borderTop.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newCellSettings.borderTopWidth = parseInt(borderMatch[1]);
+            newCellSettings.borderTopStyle = borderMatch[2];
+            newCellSettings.borderTopColor = borderMatch[3];
+          }
+        }
+      }
+
+      // Border right
+      if (colDef.cellStyle.borderRight) {
+        if (colDef.cellStyle.borderRight !== "none") {
+          newCellSettings.borderRight = true;
+          const borderMatch = colDef.cellStyle.borderRight.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newCellSettings.borderRightWidth = parseInt(borderMatch[1]);
+            newCellSettings.borderRightStyle = borderMatch[2];
+            newCellSettings.borderRightColor = borderMatch[3];
+          }
+        }
+      }
+
+      // Border bottom
+      if (colDef.cellStyle.borderBottom) {
+        if (colDef.cellStyle.borderBottom !== "none") {
+          newCellSettings.borderBottom = true;
+          const borderMatch = colDef.cellStyle.borderBottom.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newCellSettings.borderBottomWidth = parseInt(borderMatch[1]);
+            newCellSettings.borderBottomStyle = borderMatch[2];
+            newCellSettings.borderBottomColor = borderMatch[3];
+          }
+        }
+      }
+
+      // Border left
+      if (colDef.cellStyle.borderLeft) {
+        if (colDef.cellStyle.borderLeft !== "none") {
+          newCellSettings.borderLeft = true;
+          const borderMatch = colDef.cellStyle.borderLeft.match(
+            /(\d+)px\s+(\w+)\s+(#\w+)/
+          );
+          if (borderMatch) {
+            newCellSettings.borderLeftWidth = parseInt(borderMatch[1]);
+            newCellSettings.borderLeftStyle = borderMatch[2];
+            newCellSettings.borderLeftColor = borderMatch[3];
+          }
+        }
+      }
+    }
+
+    // Update cell settings state
+    setCellSettings(newCellSettings);
+
+    // Update component settings
+    const newComponentSettings = {
+      ...componentSettings,
+      cellRenderer: colDef?.cellRenderer || col.cellRenderer || "text",
+      editable: colDef?.editable !== false, // Default to true if not specified
+    };
+
+    if (colDef?.filter) {
+      newComponentSettings.filterType =
+        typeof colDef.filter === "string"
+          ? colDef.filter.replace("ag", "").replace("ColumnFilter", "")
+          : "text";
+    }
+
+    // Detect value formatter
+    const newValueSettings = { ...valueSettings };
+
+    // Detect if it has valueFormatter defined
+    if (colDef?.valueFormatter) {
+      // Try to determine the formatter type by inspecting its code
+      // or surrounding properties
+      let formatterType = "text";
+
+      // Look for clues in the function's string representation
+      const formatterStr = colDef.valueFormatter.toString();
+
+      // Check for currency formatter
+      if (
+        formatterStr.includes("style: 'currency'") ||
+        formatterStr.includes("currency:") ||
+        formatterStr.includes("$") ||
+        (colDef.field || "").toLowerCase().includes("price") ||
+        (colDef.field || "").toLowerCase().includes("cost")
+      ) {
+        formatterType = "currency";
+        newValueSettings.formatType = "currency";
+
+        // Try to determine currency symbol
+        if (formatterStr.includes("currency: 'USD'")) {
+          newValueSettings.currencySymbol = "$";
+        } else if (formatterStr.includes("currency: 'EUR'")) {
+          newValueSettings.currencySymbol = "€";
+        } else if (formatterStr.includes("currency: 'GBP'")) {
+          newValueSettings.currencySymbol = "£";
+        }
+
+        // Try to determine format
+        if (formatterStr.includes("minimumFractionDigits: 0")) {
+          newValueSettings.currencyFormat = "$1,000";
+        } else if (formatterStr.includes("minimumFractionDigits: 2")) {
+          newValueSettings.currencyFormat = "$1,000.00";
+        }
+      }
+      // Check for number formatter
+      else if (
+        formatterStr.includes("NumberFormat") ||
+        formatterStr.includes("minimumFractionDigits") ||
+        formatterStr.includes("maximumFractionDigits")
+      ) {
+        formatterType = "number";
+        newValueSettings.formatType = "number";
+
+        // Try to determine format
+        if (
+          formatterStr.includes("useGrouping: true") ||
+          formatterStr.includes("useGrouping: undefined")
+        ) {
+          if (
+            formatterStr.includes("minimumFractionDigits: 0") &&
+            formatterStr.includes("maximumFractionDigits: 0")
+          ) {
+            newValueSettings.numberFormat = "1,000";
+          } else if (
+            formatterStr.includes("minimumFractionDigits: 2") &&
+            formatterStr.includes("maximumFractionDigits: 2")
+          ) {
+            newValueSettings.numberFormat = "1,000.00";
+          }
+        } else {
+          if (
+            formatterStr.includes("minimumFractionDigits: 0") &&
+            formatterStr.includes("maximumFractionDigits: 0")
+          ) {
+            newValueSettings.numberFormat = "1000";
+          } else if (
+            formatterStr.includes("minimumFractionDigits: 2") &&
+            formatterStr.includes("maximumFractionDigits: 2")
+          ) {
+            newValueSettings.numberFormat = "1000.00";
+          }
+        }
+      }
+      // Check for date formatter
+      else if (
+        formatterStr.includes("Date(") ||
+        formatterStr.includes("DateTimeFormat") ||
+        formatterStr.includes("toLocaleDateString")
+      ) {
+        formatterType = "date";
+        newValueSettings.formatType = "date";
+
+        // Try to determine format
+        if (
+          formatterStr.includes("hour:") &&
+          formatterStr.includes("minute:")
+        ) {
+          newValueSettings.dateFormat = "MM/DD/YYYY hh:mm";
+        } else {
+          newValueSettings.dateFormat = "MM/DD/YYYY";
+        }
+      }
+
+      console.log(`Detected value formatter type: ${formatterType}`);
+    }
+
+    // Update the value settings state
+    setValueSettings(newValueSettings);
+    setComponentSettings(newComponentSettings);
+
+    // Reset changed properties for this column
+    setChangedProperties((prev) => {
+      const newChangedProps = { ...prev };
+      // Remove any existing changes for this column
+      delete newChangedProps[colId];
+      return newChangedProps;
+    });
+
+    // Reset the hasChanges flag if there are no other changes
+    setTimeout(() => {
+      const hasOtherChanges = Object.keys(changedProperties).length > 0;
+      if (!hasOtherChanges) {
+        setHasChanges(false);
+      }
+    }, 0);
+
+    // Try to determine the column data type
+    let dataType = "text"; // Default
+    if (colDef) {
+      if (colDef.cellDataType) {
+        dataType = colDef.cellDataType;
+      } else if (colDef.type === 'numericColumn' || 
+                (colDef.field && (
+                  colDef.field.toLowerCase().includes('price') || 
+                  colDef.field.toLowerCase().includes('amount') || 
+                  colDef.field.toLowerCase().includes('value') || 
+                  colDef.field.toLowerCase().includes('cost')
+                ))) {
+        dataType = "number";
+      } else if (colDef.field && (
+                  colDef.field.toLowerCase().includes('date') || 
+                  colDef.field.toLowerCase().includes('time')
+                )) {
+        dataType = "date";
+      } else if (colDef.field && (
+                  colDef.field.toLowerCase().includes('boolean') || 
+                  colDef.field.toLowerCase().includes('flag') ||
+                  colDef.field.toLowerCase().includes('enable') ||
+                  colDef.field.toLowerCase().includes('active') ||
+                  colDef.field.toLowerCase().includes('visible')
+                )) {
+        dataType = "boolean";
+      }
+    }
+
+    // Add the determined data type to the value settings
+    newValueSettings.dataType = dataType;
+  }, [
+    columns,
+    columnDefs,
+    headerSettings,
+    cellSettings,
+    valueSettings,
+    componentSettings,
+    changedProperties,
+  ]);
+  
   // Update column settings based on the selected column and current settings
   const updateColumnSettings = useCallback(() => {
     if (!selectedColumn) return { columnState: columns, columnDefs };
@@ -573,6 +1038,31 @@ export function ColumnSettingsDialog({
           }
         }
 
+        // Apply data type change if it's been changed
+        if (colChanges.value && colChanges.value.dataType) {
+          updatedColDef.cellDataType = valueSettings.dataType;
+          
+          // If changing to number, add numericColumn for proper sorting
+          if (valueSettings.dataType === "number") {
+            updatedColDef.type = "numericColumn";
+          } 
+          // If changing to date, set appropriate date-related properties
+          else if (valueSettings.dataType === "date" || valueSettings.dataType === "dateString") {
+            if (!updatedColDef.valueFormatter) {
+              updatedColDef.valueFormatter = (params: any) => {
+                if (params.value == null) return "";
+                const date = new Date(params.value);
+                if (isNaN(date.getTime())) return params.value;
+                return new Intl.DateTimeFormat("en-US", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                }).format(date);
+              };
+            }
+          }
+        }
+
         return updatedColDef;
       }
       return colDef;
@@ -591,7 +1081,6 @@ export function ColumnSettingsDialog({
     valueSettings,
     componentSettings,
     activeTab,
-    setHasChanges,
     hasChanges,
     changedProperties,
   ]);
@@ -632,41 +1121,8 @@ export function ColumnSettingsDialog({
       return state;
     });
 
-    // *** FIX: Save the COMPLETE updated column definitions, not just the changed ones ***
+    // Save the COMPLETE updated column definitions, not just the changed ones
     const columnDefsToSave = updatedColumnDefs;
-
-    // REMOVED: Filtering logic and attempts to add back missing definitions
-    /*
-    // Filter column definitions to only include those that have been explicitly changed
-    const columnDefsToSave = updatedColumnDefs.filter((colDef) => {
-      const colId = colDef.colId || colDef.field;
-      return changedColumnIds.includes(colId);
-    });
-
-    console.log("columnDefsToSave before processing:", columnDefsToSave);
-
-    // Make sure we have complete column definitions for all changed columns
-    changedColumnIds.forEach((colId) => {
-      // Check if this column ID already has a definition in the filtered list
-      const existingColDef = columnDefsToSave.find(
-        (def) => def.colId === colId || def.field === colId,
-      );
-
-      if (!existingColDef) {
-        // Find the original column definition from the full list
-        const originalColDef = updatedColumnDefs.find(
-          (def) => def.colId === colId || def.field === colId,
-        );
-
-        if (originalColDef) {
-          console.log(`Adding missing column definition for ${colId}`);
-          columnDefsToSave.push(originalColDef);
-        } else {
-          console.log(`WARNING: Could not find column definition for ${colId}`);
-        }
-      }
-    });
-    */
 
     console.log("Saving column state to store:", columnStateToSave);
     console.log(
@@ -688,80 +1144,153 @@ export function ColumnSettingsDialog({
     onOpenChange,
     setColumnState,
     setColumnDefs,
-    updateColumnSettings, // Contains the logic to create updatedColumnDefs
+    updateColumnSettings,
     changedProperties,
     hasChanges,
-    // No longer need selectedColumn, columnDefs, headerSettings, cellSettings here directly
-    // as they are used within updateColumnSettings
   ]);
 
-  // Reset all columns to default
-  const resetColumns = useCallback(() => {
-    if (gridRef.current?.api) {
-      // Get the original column definitions
-      const allColumns = gridRef.current.api.getColumnDefs();
+  // Just updating the render part for a better UI
+  
+  // Filter columns for search
+  const filteredColumns = useMemo(() => {
+    if (!searchTerm) return columns;
+    
+    return columns.filter(col => {
+      const colId = col.colId || '';
+      const headerName = col.headerName || col.colId || '';
+      return colId.toLowerCase().includes(searchTerm.toLowerCase()) || 
+             headerName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  }, [columns, searchTerm]);
 
-      // Create a reset state with only the properties that are part of the column state
-      // according to AG-Grid's ColumnStateParams interface
-      const resetState = allColumns.map((col: any) => ({
-        colId: col.field || col.colId,
-        // Only include properties that are part of the column state
-        hide: false,
-        // Include width if it was defined in the original column definition
-        width: col.width,
-        // Reset any other state properties
-        pinned: null,
-        sort: null,
-        sortIndex: null,
-      }));
+  // Render a more compact column list
+  const renderColumnList = () => {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="px-1.5 mb-1">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search columns"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-7 h-7 text-xs"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+              </button>
+            )}
+          </div>
+        </div>
+        
+        <ScrollArea className="flex-1 px-1.5">
+          <div className="space-y-0.5">
+            {filteredColumns.length === 0 ? (
+              <div className="py-4 text-center text-muted-foreground text-xs">
+                No columns found
+              </div>
+            ) : (
+              filteredColumns.map((col) => {
+                const isActive = selectedColumn === col.colId;
+                const isModified = changedProperties[col.colId];
+                
+                return (
+                  <div
+                    key={col.colId}
+                    className={cn(
+                      "flex items-center rounded px-2 py-1 text-xs cursor-pointer group relative transition-colors",
+                      isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/40",
+                      isModified && "border-l-2 border-primary pl-1.5"
+                    )}
+                    onClick={() => handleColumnSelect(col.colId)}
+                  >
+                    <div className="flex-1 flex items-center space-x-2 overflow-hidden">
+                      <Columns className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      <div className="flex-1 truncate">
+                        <span className="font-medium">{col.headerName || col.colId}</span>
+                        {col.headerName && col.colId && col.headerName !== col.colId && (
+                          <span className="text-[10px] text-muted-foreground block truncate">
+                            {col.colId}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center ml-1 opacity-0 group-hover:opacity-100">
+                      {col.hide ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <EyeOff className="h-3 w-3 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="text-xs">
+                              Column is hidden
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : null}
+                    </div>
+                    
+                    {isModified && (
+                      <div className="absolute -left-1 top-1/2 transform -translate-y-1/2">
+                        <Circle className="h-1.5 w-1.5 fill-primary text-primary" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  };
 
-      console.log("Resetting column state to:", resetState);
-
-      // Update local state
-      setColumns(allColumns);
-
-      // Mark all columns as having changed for simplicity
-      allColumns.forEach((col) => {
-        if (col.colId) {
-          trackPropertyChange(col.colId, "header", "reset");
-        }
-      });
-
-      // Save to store only - the DataTable component will apply the changes to the grid
-      // This follows the same data flow pattern as the General Settings Dialog
-      setColumnState(resetState);
-    }
-  }, [gridRef, setColumnState]);
-
-  // Render the content based on the active tab
+  // Render compact tab content 
   const renderTabContent = () => {
     switch (activeTab) {
       case "header":
         return (
-          <div className="space-y-4">
+          <div className="space-y-3 px-1">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Header Settings</h3>
+              <h3 className="text-sm font-medium flex items-center gap-1.5">
+                <Settings2 className="h-3.5 w-3.5 text-primary" />
+                Header Settings
+              </h3>
               {selectedColumn ? (
-                <div className="text-sm font-medium text-primary">
-                  Editing: {selectedColumn}
+                <div className="text-xs font-medium px-1.5 py-0.5 bg-primary/10 rounded text-primary">
+                  {selectedColumn}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  Select a column first
+                <div className="text-xs text-muted-foreground">
+                  Select a column
                 </div>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Customize the header appearance for the selected column.
-            </p>
-            <Separator className="my-2" />
+            <Separator className="my-1" />
 
             {selectedColumn ? (
-              <ScrollArea className="h-[400px] pr-4">
-                <div className="space-y-6">
+              <ScrollArea className="pr-2">
+                <div className="space-y-3">
                   {/* Header Text */}
-                  <div className="space-y-2">
-                    <Label htmlFor="header-text">Header Text</Label>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="header-text" className="text-xs font-medium">Header Text</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-60 text-xs">
+                            The text displayed in the header.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <Input
                       id="header-text"
                       value={headerSettings.text}
@@ -773,995 +1302,827 @@ export function ColumnSettingsDialog({
                         trackPropertyChange(selectedColumn, "header", "text");
                       }}
                       placeholder="Enter header text"
+                      className="h-7 text-xs"
                     />
                   </div>
 
-                  {/* Text Alignment */}
-                  <div className="space-y-2">
-                    <Label>Text Alignment</Label>
-                    <RadioGroup
-                      value={headerSettings.alignment}
-                      onValueChange={(value) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          alignment: value,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "alignment",
-                        );
+                  {/* Visual settings group */}
+                  <div className="space-y-2 rounded border p-2">
+                    <h4 className="text-xs font-medium">Visual Settings</h4>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Text Color */}
+                      <div>
+                        <Label htmlFor="text-color" className="text-[10px] mb-1 block text-muted-foreground">Text Color</Label>
+                        <Input
+                          id="text-color"
+                          value={headerSettings.textColor}
+                          onChange={(e) => {
+                            setHeaderSettings((prev) => ({
+                              ...prev,
+                              textColor: e.target.value,
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "header",
+                              "textColor",
+                            );
+                          }}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                      
+                      {/* Background Color */}
+                      <div>
+                        <Label htmlFor="bg-color" className="text-[10px] mb-1 block text-muted-foreground">Background Color</Label>
+                        <Input
+                          id="bg-color"
+                          value={headerSettings.backgroundColor}
+                          onChange={(e) => {
+                            setHeaderSettings((prev) => ({
+                              ...prev,
+                              backgroundColor: e.target.value,
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "header",
+                              "backgroundColor",
+                            );
+                          }}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-1.5">
+                      <div>
+                        <Label htmlFor="font-weight" className="text-[10px] mb-1 block text-muted-foreground">Weight</Label>
+                        <Select
+                          value={headerSettings.fontWeight}
+                          onValueChange={(value) => {
+                            setHeaderSettings((prev) => ({
+                              ...prev,
+                              fontWeight: value,
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "header",
+                              "fontWeight",
+                            );
+                          }}
+                        >
+                          <SelectTrigger id="font-weight" className="h-7 text-xs">
+                            <SelectValue placeholder="Weight" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Regular</SelectItem>
+                            <SelectItem value="400">400</SelectItem>
+                            <SelectItem value="500">500</SelectItem>
+                            <SelectItem value="600">600</SelectItem>
+                            <SelectItem value="bold">Bold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-[10px] mb-1 block text-muted-foreground">Style</Label>
+                        <div className="flex space-x-0.5">
+                          <Button
+                            type="button"
+                            variant={headerSettings.fontWeight === 'bold' ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                fontWeight: prev.fontWeight === 'bold' ? 'normal' : 'bold',
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "fontWeight",
+                              );
+                            }}
+                          >
+                            B
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={headerSettings.fontStyle === 'italic' ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                fontStyle: prev.fontStyle === 'italic' ? 'normal' : 'italic',
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "fontStyle",
+                              );
+                            }}
+                          >
+                            I
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            disabled
+                          >
+                            U
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Text Alignment */}
+                    <div className="mt-1.5">
+                      <Label className="text-[10px] mb-1 block text-muted-foreground">Alignment</Label>
+                      <div className="flex">
+                        <Button
+                          type="button"
+                          variant={headerSettings.alignment === 'left' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-7 rounded-l text-xs"
+                          onClick={() => {
+                            setHeaderSettings((prev) => ({
+                              ...prev,
+                              alignment: 'left',
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "header",
+                              "alignment",
+                            );
+                          }}
+                        >
+                          <AlignLeft className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={headerSettings.alignment === 'center' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-7 rounded-none border-x-0 text-xs"
+                          onClick={() => {
+                            setHeaderSettings((prev) => ({
+                              ...prev,
+                              alignment: 'center',
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "header",
+                              "alignment",
+                            );
+                          }}
+                        >
+                          <AlignCenter className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={headerSettings.alignment === 'right' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-7 rounded-r text-xs"
+                          onClick={() => {
+                            setHeaderSettings((prev) => ({
+                              ...prev,
+                              alignment: 'right',
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "header",
+                              "alignment",
+                            );
+                          }}
+                        >
+                          <AlignRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {/* Border */}
+                    <div className="mt-1.5">
+                      <Label className="text-[10px] mb-1 block text-muted-foreground">Border</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex space-x-0.5">
+                          <Button
+                            type="button"
+                            variant={headerSettings.borderTop ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                borderTop: !prev.borderTop,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "borderTop",
+                              );
+                            }}
+                          >
+                            T
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={headerSettings.borderRight ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                borderRight: !prev.borderRight,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "borderRight",
+                              );
+                            }}
+                          >
+                            R
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={headerSettings.borderBottom ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                borderBottom: !prev.borderBottom,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "borderBottom",
+                              );
+                            }}
+                          >
+                            B
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={headerSettings.borderLeft ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                borderLeft: !prev.borderLeft,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "borderLeft",
+                              );
+                            }}
+                          >
+                            L
+                          </Button>
+                        </div>
+                        <div className="flex space-x-1">
+                          <Select
+                            value={headerSettings.borderTopStyle}
+                            onValueChange={(value) => {
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                borderTopStyle: value,
+                                borderRightStyle: value,
+                                borderBottomStyle: value,
+                                borderLeftStyle: value,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "borderTopStyle",
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="h-7 flex-1 text-xs">
+                              <SelectValue placeholder="Style" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="solid">Solid</SelectItem>
+                              <SelectItem value="dashed">Dashed</SelectItem>
+                              <SelectItem value="dotted">Dotted</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="relative w-7 h-7 rounded border flex items-center justify-center overflow-hidden">
+                            <div
+                              className="w-4 h-4 rounded"
+                              style={{ backgroundColor: headerSettings.borderTopColor }}
+                            />
+                            <Input
+                              type="color"
+                              value={headerSettings.borderTopColor}
+                              onChange={(e) => {
+                                const color = e.target.value;
+                                setHeaderSettings((prev) => ({
+                                  ...prev,
+                                  borderTopColor: color,
+                                  borderRightColor: color,
+                                  borderBottomColor: color,
+                                  borderLeftColor: color,
+                                }));
+                                trackPropertyChange(
+                                  selectedColumn,
+                                  "header",
+                                  "borderTopColor",
+                                );
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Border Width Slider */}
+                      <div className="mt-1.5 flex items-center space-x-2">
+                        <Label className="text-[10px] w-16 text-muted-foreground">Thickness:</Label>
+                        <div className="flex-1 relative">
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={headerSettings.borderTopWidth}
+                            onChange={(e) => {
+                              const width = parseInt(e.target.value);
+                              setHeaderSettings((prev) => ({
+                                ...prev,
+                                borderTopWidth: width,
+                                borderRightWidth: width,
+                                borderBottomWidth: width,
+                                borderLeftWidth: width,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "header",
+                                "borderTopWidth",
+                              );
+                            }}
+                            className="w-full h-1.5 bg-primary/20 rounded-full appearance-none cursor-pointer"
+                          />
+                        </div>
+                        <div className="w-7 flex justify-end">
+                          <span className="text-[10px] font-mono bg-muted px-1 py-0.5 rounded-sm">
+                            {headerSettings.borderTopWidth}px
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preview */}
+                  <div className="space-y-1 mt-2">
+                    <h4 className="text-xs font-medium">Preview</h4>
+                    <div 
+                      className="h-8 flex items-center px-3 border rounded text-xs"
+                      style={{
+                        color: headerSettings.textColor,
+                        backgroundColor: headerSettings.backgroundColor,
+                        fontFamily: headerSettings.fontFamily,
+                        fontSize: `${headerSettings.fontSize}px`,
+                        fontWeight: headerSettings.fontWeight,
+                        fontStyle: headerSettings.fontStyle,
+                        justifyContent: 
+                          headerSettings.alignment === 'left' 
+                            ? 'flex-start' 
+                            : headerSettings.alignment === 'right' 
+                              ? 'flex-end' 
+                              : 'center',
+                        borderTop: headerSettings.borderTop 
+                          ? `${headerSettings.borderTopWidth}px ${headerSettings.borderTopStyle} ${headerSettings.borderTopColor}` 
+                          : undefined,
+                        borderRight: headerSettings.borderRight 
+                          ? `${headerSettings.borderRightWidth}px ${headerSettings.borderRightStyle} ${headerSettings.borderRightColor}` 
+                          : undefined,
+                        borderBottom: headerSettings.borderBottom 
+                          ? `${headerSettings.borderBottomWidth}px ${headerSettings.borderBottomStyle} ${headerSettings.borderBottomColor}` 
+                          : undefined,
+                        borderLeft: headerSettings.borderLeft 
+                          ? `${headerSettings.borderLeftWidth}px ${headerSettings.borderLeftStyle} ${headerSettings.borderLeftColor}` 
+                          : undefined,
                       }}
-                      className="flex space-x-2"
                     >
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="left" id="align-left" />
-                        <Label
-                          htmlFor="align-left"
-                          className="flex items-center"
-                        >
-                          <AlignLeft className="h-4 w-4 mr-1" /> Left
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="center" id="align-center" />
-                        <Label
-                          htmlFor="align-center"
-                          className="flex items-center"
-                        >
-                          <AlignCenter className="h-4 w-4 mr-1" /> Center
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="right" id="align-right" />
-                        <Label
-                          htmlFor="align-right"
-                          className="flex items-center"
-                        >
-                          <AlignRight className="h-4 w-4 mr-1" /> Right
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {/* Text Color */}
-                  <div className="space-y-2">
-                    <Label htmlFor="text-color">Text Color</Label>
-                    <div className="flex">
-                      <Input
-                        id="text-color"
-                        type="color"
-                        value={headerSettings.textColor}
-                        onChange={(e) => {
-                          setHeaderSettings((prev) => ({
-                            ...prev,
-                            textColor: e.target.value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "header",
-                            "textColor",
-                          );
-                        }}
-                        className="w-12 p-1 h-9"
-                      />
-                      <Input
-                        value={headerSettings.textColor}
-                        onChange={(e) => {
-                          setHeaderSettings((prev) => ({
-                            ...prev,
-                            textColor: e.target.value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "header",
-                            "textColor",
-                          );
-                        }}
-                        className="w-full ml-2"
-                      />
+                      {headerSettings.text || selectedColumn || "Header Preview"}
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bg-color">Background Color</Label>
-                    <div className="flex">
-                      <Input
-                        id="bg-color"
-                        type="color"
-                        value={headerSettings.backgroundColor}
-                        onChange={(e) => {
-                          setHeaderSettings((prev) => ({
-                            ...prev,
-                            backgroundColor: e.target.value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "header",
-                            "backgroundColor",
-                          );
-                        }}
-                        className="w-12 p-1 h-9"
-                      />
-                      <Input
-                        value={headerSettings.backgroundColor}
-                        onChange={(e) => {
-                          setHeaderSettings((prev) => ({
-                            ...prev,
-                            backgroundColor: e.target.value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "header",
-                            "backgroundColor",
-                          );
-                        }}
-                        className="w-full ml-2"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Font Settings */}
-                <div className="space-y-2">
-                  <Label htmlFor="font-family">Font Family</Label>
-                  <Select
-                    value={headerSettings.fontFamily}
-                    onValueChange={(value) => {
-                      setHeaderSettings((prev) => ({
-                        ...prev,
-                        fontFamily: value,
-                      }));
-                      trackPropertyChange(
-                        selectedColumn,
-                        "header",
-                        "fontFamily",
-                      );
-                    }}
-                  >
-                    <SelectTrigger id="font-family">
-                      <SelectValue placeholder="Select font" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Inter">Inter</SelectItem>
-                      <SelectItem value="Arial">Arial</SelectItem>
-                      <SelectItem value="Helvetica">Helvetica</SelectItem>
-                      <SelectItem value="Times New Roman">
-                        Times New Roman
-                      </SelectItem>
-                      <SelectItem value="Courier New">Courier New</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="font-size">Font Size</Label>
-                  <div className="flex items-center">
-                    <Input
-                      id="font-size"
-                      type="number"
-                      min={8}
-                      max={24}
-                      value={headerSettings.fontSize}
-                      onChange={(e) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          fontSize: parseInt(e.target.value) || 14,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "fontSize",
-                        );
-                      }}
-                      className="w-full"
-                    />
-                    <span className="ml-2 text-sm">px</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="font-weight">Font Weight</Label>
-                  <Select
-                    value={headerSettings.fontWeight}
-                    onValueChange={(value) => {
-                      setHeaderSettings((prev) => ({
-                        ...prev,
-                        fontWeight: value,
-                      }));
-                      trackPropertyChange(
-                        selectedColumn,
-                        "header",
-                        "fontWeight",
-                      );
-                    }}
-                  >
-                    <SelectTrigger id="font-weight">
-                      <SelectValue placeholder="Weight" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="bold">Bold</SelectItem>
-                      <SelectItem value="lighter">Lighter</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="font-style">Font Style</Label>
-                  <Select
-                    value={headerSettings.fontStyle}
-                    onValueChange={(value) => {
-                      setHeaderSettings((prev) => ({
-                        ...prev,
-                        fontStyle: value,
-                      }));
-                      trackPropertyChange(
-                        selectedColumn,
-                        "header",
-                        "fontStyle",
-                      );
-                    }}
-                  >
-                    <SelectTrigger id="font-style">
-                      <SelectValue placeholder="Style" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="italic">Italic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Border Settings */}
-                <div className="space-y-4">
-                  <Label className="text-base font-medium">
-                    Border Settings
-                  </Label>
-                  <div className="space-y-3 pl-1">
-                    <BorderStyleEditor
-                      title="Top"
-                      enabled={headerSettings.borderTop}
-                      onEnabledChange={(enabled) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderTop: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderTop",
-                        );
-                      }}
-                      width={headerSettings.borderTopWidth}
-                      onWidthChange={(width) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderTopWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderTopWidth",
-                        );
-                      }}
-                      style={headerSettings.borderTopStyle}
-                      onStyleChange={(style) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderTopStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderTopStyle",
-                        );
-                      }}
-                      color={headerSettings.borderTopColor}
-                      onColorChange={(color) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderTopColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderTopColor",
-                        );
-                      }}
-                    />
-
-                    <BorderStyleEditor
-                      title="Right"
-                      enabled={headerSettings.borderRight}
-                      onEnabledChange={(enabled) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderRight: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderRight",
-                        );
-                      }}
-                      width={headerSettings.borderRightWidth}
-                      onWidthChange={(width) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderRightWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderRightWidth",
-                        );
-                      }}
-                      style={headerSettings.borderRightStyle}
-                      onStyleChange={(style) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderRightStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderRightStyle",
-                        );
-                      }}
-                      color={headerSettings.borderRightColor}
-                      onColorChange={(color) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderRightColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderRightColor",
-                        );
-                      }}
-                    />
-
-                    <BorderStyleEditor
-                      title="Bottom"
-                      enabled={headerSettings.borderBottom}
-                      onEnabledChange={(enabled) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderBottom: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderBottom",
-                        );
-                      }}
-                      width={headerSettings.borderBottomWidth}
-                      onWidthChange={(width) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderBottomWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderBottomWidth",
-                        );
-                      }}
-                      style={headerSettings.borderBottomStyle}
-                      onStyleChange={(style) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderBottomStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderBottomStyle",
-                        );
-                      }}
-                      color={headerSettings.borderBottomColor}
-                      onColorChange={(color) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderBottomColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderBottomColor",
-                        );
-                      }}
-                    />
-
-                    <BorderStyleEditor
-                      title="Left"
-                      enabled={headerSettings.borderLeft}
-                      onEnabledChange={(enabled) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderLeft: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderLeft",
-                        );
-                      }}
-                      width={headerSettings.borderLeftWidth}
-                      onWidthChange={(width) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderLeftWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderLeftWidth",
-                        );
-                      }}
-                      style={headerSettings.borderLeftStyle}
-                      onStyleChange={(style) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderLeftStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderLeftStyle",
-                        );
-                      }}
-                      color={headerSettings.borderLeftColor}
-                      onColorChange={(color) => {
-                        setHeaderSettings((prev) => ({
-                          ...prev,
-                          borderLeftColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "header",
-                          "borderLeftColor",
-                        );
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Preview - spans 2 columns */}
-                <div className="space-y-2 col-span-2">
-                  <Label>Preview</Label>
-                  <div
-                    className="border p-3 rounded-md"
-                    style={{
-                      color: headerSettings.textColor,
-                      backgroundColor: headerSettings.backgroundColor,
-                      fontFamily: headerSettings.fontFamily,
-                      fontSize: `${headerSettings.fontSize}px`,
-                      fontWeight: headerSettings.fontWeight,
-                      fontStyle: headerSettings.fontStyle,
-                      textAlign: headerSettings.alignment as any,
-                      borderTop: headerSettings.borderTop
-                        ? "1px solid #ccc"
-                        : "none",
-                      borderRight: headerSettings.borderRight
-                        ? "1px solid #ccc"
-                        : "none",
-                      borderBottom: headerSettings.borderBottom
-                        ? "1px solid #ccc"
-                        : "none",
-                      borderLeft: headerSettings.borderLeft
-                        ? "1px solid #ccc"
-                        : "none",
-                    }}
-                  >
-                    {headerSettings.text || selectedColumn}
                   </div>
                 </div>
               </ScrollArea>
             ) : (
-              <div className="flex items-center justify-center h-[400px] border rounded-md bg-muted/20">
-                <p className="text-muted-foreground">
-                  Please select a column from the Available Columns tab
+              <div className="flex flex-col items-center justify-center h-[200px] border border-dashed rounded p-4">
+                <Columns className="h-8 w-8 text-muted-foreground mb-2" />
+                <h3 className="text-sm font-medium">No Column Selected</h3>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  Select a column from the list on the left
                 </p>
               </div>
             )}
           </div>
         );
-
+      
       case "cell":
         return (
-          <div className="space-y-4">
+          <div className="space-y-3 px-1">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Cell Formatting</h3>
+              <h3 className="text-sm font-medium flex items-center gap-1.5">
+                <Paintbrush className="h-3.5 w-3.5 text-primary" />
+                Cell Formatting
+              </h3>
               {selectedColumn ? (
-                <div className="text-sm font-medium text-primary">
-                  Editing: {selectedColumn}
+                <div className="text-xs font-medium px-1.5 py-0.5 bg-primary/10 rounded text-primary">
+                  {selectedColumn}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  Select a column first
+                <div className="text-xs text-muted-foreground">
+                  Select a column
                 </div>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Configure cell appearance and formatting options.
-            </p>
-            <Separator className="my-2" />
+            <Separator className="my-1" />
 
             {selectedColumn ? (
-              <ScrollArea className="h-[400px] pr-4">
-                <div className="space-y-6">
-                  {/* Text Alignment */}
-                  <div className="space-y-2">
-                    <Label>Text Alignment</Label>
-                    <RadioGroup
-                      value={cellSettings.alignment}
-                      onValueChange={(value) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          alignment: value,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "alignment",
-                        );
-                      }}
-                      className="flex space-x-2"
-                    >
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="left" id="cell-align-left" />
-                        <Label
-                          htmlFor="cell-align-left"
-                          className="flex items-center"
-                        >
-                          <AlignLeft className="h-4 w-4 mr-1" /> Left
-                        </Label>
+              <ScrollArea className="pr-2">
+                <div className="space-y-3">
+                  {/* Visual settings group */}
+                  <div className="space-y-2 rounded border p-2">
+                    <h4 className="text-xs font-medium">Visual Settings</h4>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Text Color */}
+                      <div>
+                        <Label htmlFor="text-color" className="text-[10px] mb-1 block text-muted-foreground">Text Color</Label>
+                        <Input
+                          id="text-color"
+                          value={cellSettings.textColor}
+                          onChange={(e) => {
+                            setCellSettings((prev) => ({
+                              ...prev,
+                              textColor: e.target.value,
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "cell",
+                              "textColor",
+                            );
+                          }}
+                          className="h-7 text-xs"
+                        />
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="center" id="cell-align-center" />
-                        <Label
-                          htmlFor="cell-align-center"
-                          className="flex items-center"
-                        >
-                          <AlignCenter className="h-4 w-4 mr-1" /> Center
-                        </Label>
+                      
+                      {/* Background Color */}
+                      <div>
+                        <Label htmlFor="bg-color" className="text-[10px] mb-1 block text-muted-foreground">Background Color</Label>
+                        <Input
+                          id="bg-color"
+                          value={cellSettings.backgroundColor}
+                          onChange={(e) => {
+                            setCellSettings((prev) => ({
+                              ...prev,
+                              backgroundColor: e.target.value,
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "cell",
+                              "backgroundColor",
+                            );
+                          }}
+                          className="h-7 text-xs"
+                        />
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="right" id="cell-align-right" />
-                        <Label
-                          htmlFor="cell-align-right"
-                          className="flex items-center"
-                        >
-                          <AlignRight className="h-4 w-4 mr-1" /> Right
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {/* Text Color */}
-                  <div className="space-y-2">
-                    <Label htmlFor="cell-text-color">Text Color</Label>
-                    <div className="flex">
-                      <Input
-                        id="cell-text-color"
-                        type="color"
-                        value={cellSettings.textColor}
-                        onChange={(e) => {
-                          setCellSettings((prev) => ({
-                            ...prev,
-                            textColor: e.target.value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "cell",
-                            "textColor",
-                          );
-                        }}
-                        className="w-12 p-1 h-9"
-                      />
-                      <Input
-                        value={cellSettings.textColor}
-                        onChange={(e) => {
-                          setCellSettings((prev) => ({
-                            ...prev,
-                            textColor: e.target.value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "cell",
-                            "textColor",
-                          );
-                        }}
-                        className="w-full ml-2"
-                      />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cell-bg-color">Background Color</Label>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-1.5">
+                      <div>
+                        <Label htmlFor="font-weight" className="text-[10px] mb-1 block text-muted-foreground">Weight</Label>
+                        <Select
+                          value={cellSettings.fontWeight}
+                          onValueChange={(value) => {
+                            setCellSettings((prev) => ({
+                              ...prev,
+                              fontWeight: value,
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "cell",
+                              "fontWeight",
+                            );
+                          }}
+                        >
+                          <SelectTrigger id="font-weight" className="h-7 text-xs">
+                            <SelectValue placeholder="Weight" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Regular</SelectItem>
+                            <SelectItem value="400">400</SelectItem>
+                            <SelectItem value="500">500</SelectItem>
+                            <SelectItem value="600">600</SelectItem>
+                            <SelectItem value="bold">Bold</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-[10px] mb-1 block text-muted-foreground">Style</Label>
+                        <div className="flex space-x-0.5">
+                          <Button
+                            type="button"
+                            variant={cellSettings.fontWeight === 'bold' ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                fontWeight: prev.fontWeight === 'bold' ? 'normal' : 'bold',
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "fontWeight",
+                              );
+                            }}
+                          >
+                            B
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={cellSettings.fontStyle === 'italic' ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                fontStyle: prev.fontStyle === 'italic' ? 'normal' : 'italic',
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "fontStyle",
+                              );
+                            }}
+                          >
+                            I
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            disabled
+                          >
+                            U
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Text Alignment */}
+                    <div className="mt-1.5">
+                      <Label className="text-[10px] mb-1 block text-muted-foreground">Alignment</Label>
                       <div className="flex">
-                        <Input
-                          id="cell-bg-color"
-                          type="color"
-                          value={cellSettings.backgroundColor}
-                          onChange={(e) => {
+                        <Button
+                          type="button"
+                          variant={cellSettings.alignment === 'left' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-7 rounded-l text-xs"
+                          onClick={() => {
                             setCellSettings((prev) => ({
                               ...prev,
-                              backgroundColor: e.target.value,
+                              alignment: 'left',
                             }));
                             trackPropertyChange(
                               selectedColumn,
                               "cell",
-                              "backgroundColor",
+                              "alignment",
                             );
                           }}
-                          className="w-12 p-1 h-9"
-                        />
-                        <Input
-                          value={cellSettings.backgroundColor}
-                          onChange={(e) => {
+                        >
+                          <AlignLeft className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={cellSettings.alignment === 'center' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-7 rounded-none border-x-0 text-xs"
+                          onClick={() => {
                             setCellSettings((prev) => ({
                               ...prev,
-                              backgroundColor: e.target.value,
+                              alignment: 'center',
                             }));
                             trackPropertyChange(
                               selectedColumn,
                               "cell",
-                              "backgroundColor",
+                              "alignment",
                             );
                           }}
-                          className="w-full ml-2"
-                        />
+                        >
+                          <AlignCenter className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={cellSettings.alignment === 'right' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-7 rounded-r text-xs"
+                          onClick={() => {
+                            setCellSettings((prev) => ({
+                              ...prev,
+                              alignment: 'right',
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "cell",
+                              "alignment",
+                            );
+                          }}
+                        >
+                          <AlignRight className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Font Settings */}
-                  <div className="space-y-2">
-                    <Label htmlFor="cell-font-family">Font Family</Label>
-                    <Select
-                      value={cellSettings.fontFamily}
-                      onValueChange={(value) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          fontFamily: value,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "fontFamily",
-                        );
-                      }}
-                    >
-                      <SelectTrigger id="cell-font-family">
-                        <SelectValue placeholder="Select font" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Inter">Inter</SelectItem>
-                        <SelectItem value="Arial">Arial</SelectItem>
-                        <SelectItem value="Helvetica">Helvetica</SelectItem>
-                        <SelectItem value="Times New Roman">
-                          Times New Roman
-                        </SelectItem>
-                        <SelectItem value="Courier New">Courier New</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="cell-font-size">Font Size</Label>
-                    <div className="flex items-center">
-                      <Input
-                        id="cell-font-size"
-                        type="number"
-                        min={8}
-                        max={24}
-                        value={cellSettings.fontSize}
-                        onChange={(e) => {
-                          setCellSettings((prev) => ({
-                            ...prev,
-                            fontSize: parseInt(e.target.value) || 14,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "cell",
-                            "fontSize",
-                          );
-                        }}
-                        className="w-full"
-                      />
-                      <span className="ml-2 text-sm">px</span>
+                    
+                    {/* Border */}
+                    <div className="mt-1.5">
+                      <Label className="text-[10px] mb-1 block text-muted-foreground">Border</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex space-x-0.5">
+                          <Button
+                            type="button"
+                            variant={cellSettings.borderTop ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                borderTop: !prev.borderTop,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "borderTop",
+                              );
+                            }}
+                          >
+                            T
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={cellSettings.borderRight ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                borderRight: !prev.borderRight,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "borderRight",
+                              );
+                            }}
+                          >
+                            R
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={cellSettings.borderBottom ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                borderBottom: !prev.borderBottom,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "borderBottom",
+                              );
+                            }}
+                          >
+                            B
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={cellSettings.borderLeft ? 'default' : 'outline'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => {
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                borderLeft: !prev.borderLeft,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "borderLeft",
+                              );
+                            }}
+                          >
+                            L
+                          </Button>
+                        </div>
+                        <div className="flex space-x-1">
+                          <Select
+                            value={cellSettings.borderTopStyle}
+                            onValueChange={(value) => {
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                borderTopStyle: value,
+                                borderRightStyle: value,
+                                borderBottomStyle: value,
+                                borderLeftStyle: value,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "borderTopStyle",
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="h-7 flex-1 text-xs">
+                              <SelectValue placeholder="Style" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="solid">Solid</SelectItem>
+                              <SelectItem value="dashed">Dashed</SelectItem>
+                              <SelectItem value="dotted">Dotted</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="relative w-7 h-7 rounded border flex items-center justify-center overflow-hidden">
+                            <div
+                              className="w-4 h-4 rounded"
+                              style={{ backgroundColor: cellSettings.borderTopColor }}
+                            />
+                            <Input
+                              type="color"
+                              value={cellSettings.borderTopColor}
+                              onChange={(e) => {
+                                const color = e.target.value;
+                                setCellSettings((prev) => ({
+                                  ...prev,
+                                  borderTopColor: color,
+                                  borderRightColor: color,
+                                  borderBottomColor: color,
+                                  borderLeftColor: color,
+                                }));
+                                trackPropertyChange(
+                                  selectedColumn,
+                                  "cell",
+                                  "borderTopColor",
+                                );
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Border Width Slider */}
+                      <div className="mt-1.5 flex items-center space-x-2">
+                        <Label className="text-[10px] w-16 text-muted-foreground">Thickness:</Label>
+                        <div className="flex-1 relative">
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={cellSettings.borderTopWidth}
+                            onChange={(e) => {
+                              const width = parseInt(e.target.value);
+                              setCellSettings((prev) => ({
+                                ...prev,
+                                borderTopWidth: width,
+                                borderRightWidth: width,
+                                borderBottomWidth: width,
+                                borderLeftWidth: width,
+                              }));
+                              trackPropertyChange(
+                                selectedColumn,
+                                "cell",
+                                "borderTopWidth",
+                              );
+                            }}
+                            className="w-full h-1.5 bg-primary/20 rounded-full appearance-none cursor-pointer"
+                          />
+                        </div>
+                        <div className="w-7 flex justify-end">
+                          <span className="text-[10px] font-mono bg-muted px-1 py-0.5 rounded-sm">
+                            {cellSettings.borderTopWidth}px
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cell-font-weight">Font Weight</Label>
-                    <Select
-                      value={cellSettings.fontWeight}
-                      onValueChange={(value) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          fontWeight: value,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "fontWeight",
-                        );
-                      }}
-                    >
-                      <SelectTrigger id="cell-font-weight">
-                        <SelectValue placeholder="Weight" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="bold">Bold</SelectItem>
-                        <SelectItem value="lighter">Lighter</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cell-font-style">Font Style</Label>
-                    <Select
-                      value={cellSettings.fontStyle}
-                      onValueChange={(value) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          fontStyle: value,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "fontStyle",
-                        );
-                      }}
-                    >
-                      <SelectTrigger id="cell-font-style">
-                        <SelectValue placeholder="Style" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="italic">Italic</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Border Settings - Top */}
-                  <div className="space-y-2">
-                    <BorderStyleEditor
-                      title="Top"
-                      enabled={cellSettings.borderTop}
-                      onEnabledChange={(enabled) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderTop: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderTop",
-                        );
-                      }}
-                      width={cellSettings.borderTopWidth}
-                      onWidthChange={(width) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderTopWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderTopWidth",
-                        );
-                      }}
-                      style={cellSettings.borderTopStyle}
-                      onStyleChange={(style) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderTopStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderTopStyle",
-                        );
-                      }}
-                      color={cellSettings.borderTopColor}
-                      onColorChange={(color) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderTopColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderTopColor",
-                        );
-                      }}
-                    />
-                  </div>
-
-                  {/* Border Right */}
-                  <div className="space-y-2">
-                    <BorderStyleEditor
-                      title="Right"
-                      enabled={cellSettings.borderRight}
-                      onEnabledChange={(enabled) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderRight: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderRight",
-                        );
-                      }}
-                      width={cellSettings.borderRightWidth}
-                      onWidthChange={(width) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderRightWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderRightWidth",
-                        );
-                      }}
-                      style={cellSettings.borderRightStyle}
-                      onStyleChange={(style) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderRightStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderRightStyle",
-                        );
-                      }}
-                      color={cellSettings.borderRightColor}
-                      onColorChange={(color) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderRightColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderRightColor",
-                        );
-                      }}
-                    />
-                  </div>
-
-                  {/* Border Bottom */}
-                  <div className="space-y-2">
-                    <BorderStyleEditor
-                      title="Bottom"
-                      enabled={cellSettings.borderBottom}
-                      onEnabledChange={(enabled) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderBottom: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderBottom",
-                        );
-                      }}
-                      width={cellSettings.borderBottomWidth}
-                      onWidthChange={(width) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderBottomWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderBottomWidth",
-                        );
-                      }}
-                      style={cellSettings.borderBottomStyle}
-                      onStyleChange={(style) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderBottomStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderBottomStyle",
-                        );
-                      }}
-                      color={cellSettings.borderBottomColor}
-                      onColorChange={(color) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderBottomColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderBottomColor",
-                        );
-                      }}
-                    />
-                  </div>
-
-                  {/* Border Left */}
-                  <div className="space-y-2">
-                    <BorderStyleEditor
-                      title="Left"
-                      enabled={cellSettings.borderLeft}
-                      onEnabledChange={(enabled) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderLeft: enabled,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderLeft",
-                        );
-                      }}
-                      width={cellSettings.borderLeftWidth}
-                      onWidthChange={(width) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderLeftWidth: width,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderLeftWidth",
-                        );
-                      }}
-                      style={cellSettings.borderLeftStyle}
-                      onStyleChange={(style) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderLeftStyle: style,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderLeftStyle",
-                        );
-                      }}
-                      color={cellSettings.borderLeftColor}
-                      onColorChange={(color) => {
-                        setCellSettings((prev) => ({
-                          ...prev,
-                          borderLeftColor: color,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "cell",
-                          "borderLeftColor",
-                        );
-                      }}
-                    />
-                  </div>
-
-                  {/* Conditional Formatting Section */}
-                  <div className="space-y-2">
-                    <Label>Conditional Formatting</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Apply styles based on cell values. This feature will be
-                      implemented in a future update.
-                    </p>
-                    <Button variant="outline" disabled className="w-full">
-                      Add Conditional Format Rule
-                    </Button>
                   </div>
 
                   {/* Preview */}
-                  <div className="space-y-2">
-                    <Label>Preview</Label>
-                    <div
-                      className="border p-3 rounded-md"
+                  <div className="space-y-1 mt-2">
+                    <h4 className="text-xs font-medium">Preview</h4>
+                    <div 
+                      className="h-8 flex items-center px-3 border rounded text-xs"
                       style={{
                         color: cellSettings.textColor,
                         backgroundColor: cellSettings.backgroundColor,
@@ -1769,19 +2130,19 @@ export function ColumnSettingsDialog({
                         fontSize: `${cellSettings.fontSize}px`,
                         fontWeight: cellSettings.fontWeight,
                         fontStyle: cellSettings.fontStyle,
-                        textAlign: cellSettings.alignment as any,
-                        borderTop: cellSettings.borderTop
-                          ? "1px solid #ccc"
-                          : "none",
-                        borderRight: cellSettings.borderRight
-                          ? "1px solid #ccc"
-                          : "none",
-                        borderBottom: cellSettings.borderBottom
-                          ? "1px solid #ccc"
-                          : "none",
-                        borderLeft: cellSettings.borderLeft
-                          ? "1px solid #ccc"
-                          : "none",
+                        textAlign: cellSettings.alignment,
+                        borderTop: cellSettings.borderTop 
+                          ? `${cellSettings.borderTopWidth}px ${cellSettings.borderTopStyle} ${cellSettings.borderTopColor}` 
+                          : undefined,
+                        borderRight: cellSettings.borderRight 
+                          ? `${cellSettings.borderRightWidth}px ${cellSettings.borderRightStyle} ${cellSettings.borderRightColor}` 
+                          : undefined,
+                        borderBottom: cellSettings.borderBottom 
+                          ? `${cellSettings.borderBottomWidth}px ${cellSettings.borderBottomStyle} ${cellSettings.borderBottomColor}` 
+                          : undefined,
+                        borderLeft: cellSettings.borderLeft 
+                          ? `${cellSettings.borderLeftWidth}px ${cellSettings.borderLeftStyle} ${cellSettings.borderLeftColor}` 
+                          : undefined,
                       }}
                     >
                       Sample Cell Value
@@ -1790,41 +2151,86 @@ export function ColumnSettingsDialog({
                 </div>
               </ScrollArea>
             ) : (
-              <div className="flex items-center justify-center h-[400px] border rounded-md bg-muted/20">
-                <p className="text-muted-foreground">
-                  Please select a column from the Available Columns tab
+              <div className="flex flex-col items-center justify-center h-[200px] border border-dashed rounded p-4">
+                <Columns className="h-8 w-8 text-muted-foreground mb-2" />
+                <h3 className="text-sm font-medium">No Column Selected</h3>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  Select a column from the list on the left
                 </p>
               </div>
             )}
           </div>
         );
-
+        
       case "value":
         return (
-          <div className="space-y-4">
+          <div className="space-y-3 px-1">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Value Formatting</h3>
+              <h3 className="text-sm font-medium flex items-center gap-1.5">
+                <Type className="h-3.5 w-3.5 text-primary" />
+                Value Formatting
+              </h3>
               {selectedColumn ? (
-                <div className="text-sm font-medium text-primary">
-                  Editing: {selectedColumn}
+                <div className="text-xs font-medium px-1.5 py-0.5 bg-primary/10 rounded text-primary">
+                  {selectedColumn}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  Select a column first
+                <div className="text-xs text-muted-foreground">
+                  Select a column
                 </div>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Set up how values are displayed in the grid.
-            </p>
-            <Separator className="my-2" />
+            <Separator className="my-1" />
 
             {selectedColumn ? (
-              <ScrollArea className="h-[400px] pr-4">
-                <div className="space-y-6">
-                  {/* Format Type */}
-                  <div className="space-y-2">
-                    <Label htmlFor="format-type">Format Type</Label>
+              <ScrollArea className="pr-2">
+                <div className="space-y-3">
+                  {/* Data Type Selection */}
+                  <div className="space-y-1.5 mb-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="data-type" className="text-xs font-medium">Column Data Type</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-60 text-xs">
+                            The data type determines how the column's data is stored, validated, and processed by the grid.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Select
+                      value={valueSettings.dataType}
+                      onValueChange={(value) => {
+                        setValueSettings((prev) => ({
+                          ...prev,
+                          dataType: value,
+                        }));
+                        trackPropertyChange(
+                          selectedColumn,
+                          "value",
+                          "dataType",
+                        );
+                      }}
+                    >
+                      <SelectTrigger id="data-type" className="h-7 text-xs">
+                        <SelectValue placeholder="Select data type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="number">Number</SelectItem>
+                        <SelectItem value="boolean">Boolean</SelectItem>
+                        <SelectItem value="date">Date</SelectItem>
+                        <SelectItem value="dateString">Date String</SelectItem>
+                        <SelectItem value="object">Object</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Format Type Selection */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="format-type" className="text-xs font-medium">Format Type</Label>
                     <Select
                       value={valueSettings.formatType}
                       onValueChange={(value) => {
@@ -1839,7 +2245,7 @@ export function ColumnSettingsDialog({
                         );
                       }}
                     >
-                      <SelectTrigger id="format-type">
+                      <SelectTrigger id="format-type" className="h-7 text-xs">
                         <SelectValue placeholder="Select format type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1847,320 +2253,315 @@ export function ColumnSettingsDialog({
                         <SelectItem value="number">Number</SelectItem>
                         <SelectItem value="currency">Currency</SelectItem>
                         <SelectItem value="percent">Percent</SelectItem>
-                        <SelectItem value="date">Date/Time</SelectItem>
+                        <SelectItem value="date">Date</SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Format Options based on type */}
-                  {valueSettings.formatType === "number" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="number-format">Number Format</Label>
-                      <Select
-                        value={valueSettings.numberFormat}
-                        onValueChange={(value) => {
-                          setValueSettings((prev) => ({
-                            ...prev,
-                            numberFormat: value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "value",
-                            "numberFormat",
-                          );
-                        }}
-                      >
-                        <SelectTrigger id="number-format">
-                          <SelectValue placeholder="Select number format" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1000">1000</SelectItem>
-                          <SelectItem value="1,000">1,000</SelectItem>
-                          <SelectItem value="1000.00">1000.00</SelectItem>
-                          <SelectItem value="1,000.00">1,000.00</SelectItem>
-                          <SelectItem value="1,000.000">1,000.000</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {valueSettings.formatType === "currency" && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="currency-symbol">Currency Symbol</Label>
+                  {/* Format specific settings */}
+                  <div className="space-y-2 rounded border p-2">
+                    <h4 className="text-xs font-medium">Format Options</h4>
+                    
+                    {valueSettings.formatType === "number" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] mb-1 block text-muted-foreground">Number Format</Label>
                         <Select
-                          value={valueSettings.currencySymbol}
+                          value={valueSettings.numberFormat}
                           onValueChange={(value) => {
                             setValueSettings((prev) => ({
                               ...prev,
-                              currencySymbol: value,
+                              numberFormat: value,
                             }));
                             trackPropertyChange(
                               selectedColumn,
                               "value",
-                              "currencySymbol",
+                              "numberFormat",
                             );
                           }}
                         >
-                          <SelectTrigger id="currency-symbol">
-                            <SelectValue placeholder="Select currency symbol" />
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue placeholder="Select number format" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="$">$ (Dollar)</SelectItem>
-                            <SelectItem value="€">€ (Euro)</SelectItem>
-                            <SelectItem value="£">£ (Pound)</SelectItem>
-                            <SelectItem value="¥">¥ (Yen)</SelectItem>
-                            <SelectItem value="₹">₹ (Rupee)</SelectItem>
+                            <SelectItem value="1,000">1,000</SelectItem>
+                            <SelectItem value="1,000.00">1,000.00</SelectItem>
+                            <SelectItem value="1000">1000</SelectItem>
+                            <SelectItem value="1000.00">1000.00</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-
+                    )}
+                    
+                    {valueSettings.formatType === "currency" && (
                       <div className="space-y-2">
-                        <Label htmlFor="currency-format">Currency Format</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[10px] mb-1 block text-muted-foreground">Currency Symbol</Label>
+                            <Select
+                              value={valueSettings.currencySymbol}
+                              onValueChange={(value) => {
+                                setValueSettings((prev) => ({
+                                  ...prev,
+                                  currencySymbol: value,
+                                }));
+                                trackPropertyChange(
+                                  selectedColumn,
+                                  "value",
+                                  "currencySymbol",
+                                );
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Symbol" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="$">$ (USD)</SelectItem>
+                                <SelectItem value="€">€ (EUR)</SelectItem>
+                                <SelectItem value="£">£ (GBP)</SelectItem>
+                                <SelectItem value="¥">¥ (JPY/CNY)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-[10px] mb-1 block text-muted-foreground">Format</Label>
+                            <Select
+                              value={valueSettings.currencyFormat}
+                              onValueChange={(value) => {
+                                setValueSettings((prev) => ({
+                                  ...prev,
+                                  currencyFormat: value,
+                                }));
+                                trackPropertyChange(
+                                  selectedColumn,
+                                  "value",
+                                  "currencyFormat",
+                                );
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Format" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="$1,000">$1,000</SelectItem>
+                                <SelectItem value="$1,000.00">$1,000.00</SelectItem>
+                                <SelectItem value="$ 1,000.00">$ 1,000.00</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {valueSettings.formatType === "date" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] mb-1 block text-muted-foreground">Date Format</Label>
                         <Select
-                          value={valueSettings.currencyFormat}
+                          value={valueSettings.dateFormat}
                           onValueChange={(value) => {
                             setValueSettings((prev) => ({
                               ...prev,
-                              currencyFormat: value,
+                              dateFormat: value,
                             }));
                             trackPropertyChange(
                               selectedColumn,
                               "value",
-                              "currencyFormat",
+                              "dateFormat",
                             );
                           }}
                         >
-                          <SelectTrigger id="currency-format">
-                            <SelectValue placeholder="Select currency format" />
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue placeholder="Select date format" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="$1000">$1000</SelectItem>
-                            <SelectItem value="$1,000">$1,000</SelectItem>
-                            <SelectItem value="$1000.00">$1000.00</SelectItem>
-                            <SelectItem value="$1,000.00">$1,000.00</SelectItem>
+                            <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                            <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                            <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                            <SelectItem value="MM/DD/YYYY hh:mm">MM/DD/YYYY hh:mm</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-                  )}
-
-                  {valueSettings.formatType === "percent" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="percent-format">Percent Format</Label>
-                      <Select
-                        value={valueSettings.numberFormat}
-                        onValueChange={(value) => {
-                          setValueSettings((prev) => ({
-                            ...prev,
-                            numberFormat: value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "value",
-                            "numberFormat",
-                          );
-                        }}
-                      >
-                        <SelectTrigger id="percent-format">
-                          <SelectValue placeholder="Select percent format" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0%">0%</SelectItem>
-                          <SelectItem value="0.0%">0.0%</SelectItem>
-                          <SelectItem value="0.00%">0.00%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {valueSettings.formatType === "date" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="date-format">Date Format</Label>
-                      <Select
-                        value={valueSettings.dateFormat}
-                        onValueChange={(value) => {
-                          setValueSettings((prev) => ({
-                            ...prev,
-                            dateFormat: value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "value",
-                            "dateFormat",
-                          );
-                        }}
-                      >
-                        <SelectTrigger id="date-format">
-                          <SelectValue placeholder="Select date format" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                          <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                          <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                          <SelectItem value="MM/DD/YYYY hh:mm">
-                            MM/DD/YYYY hh:mm
-                          </SelectItem>
-                          <SelectItem value="DD/MM/YYYY hh:mm">
-                            DD/MM/YYYY hh:mm
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {valueSettings.formatType === "custom" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="custom-format">Custom Format</Label>
-                      <Input
-                        id="custom-format"
-                        value={valueSettings.customFormat}
-                        onChange={(e) => {
-                          setValueSettings((prev) => ({
-                            ...prev,
-                            customFormat: e.target.value,
-                          }));
-                          trackPropertyChange(
-                            selectedColumn,
-                            "value",
-                            "customFormat",
-                          );
-                        }}
-                        placeholder="Enter custom format pattern"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Use # for digits, 0 for zero-padded digits, $ for
-                        currency symbols, etc.
-                      </p>
-                    </div>
-                  )}
+                    )}
+                    
+                    {valueSettings.formatType === "custom" && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="custom-format" className="text-[10px] text-muted-foreground">Custom Format String</Label>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3 w-3 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-60 text-xs">
+                                Enter a custom format string or JavaScript formatting expression.
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <Input
+                          id="custom-format"
+                          value={valueSettings.customFormat}
+                          onChange={(e) => {
+                            setValueSettings((prev) => ({
+                              ...prev,
+                              customFormat: e.target.value,
+                            }));
+                            trackPropertyChange(
+                              selectedColumn,
+                              "value",
+                              "customFormat",
+                            );
+                          }}
+                          placeholder="Enter custom format"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Preview */}
-                  <div className="space-y-2">
-                    <Label>Preview</Label>
-                    <div className="border p-3 rounded-md">
-                      {valueSettings.formatType === "text" && "Sample Text"}
-                      {valueSettings.formatType === "number" &&
-                        valueSettings.numberFormat.replace(/[0-9]/g, "1")}
-                      {valueSettings.formatType === "currency" &&
-                        valueSettings.currencyFormat.replace(/[0-9]/g, "1")}
-                      {valueSettings.formatType === "percent" &&
-                        valueSettings.numberFormat.replace(/[0-9]/g, "7")}
-                      {valueSettings.formatType === "date" &&
-                        valueSettings.dateFormat.replace(/[MDY]/g, (m) =>
-                          m === "M" ? "01" : m === "D" ? "15" : "2023",
-                        )}
-                      {valueSettings.formatType === "custom" &&
-                        (valueSettings.customFormat || "Enter a custom format")}
+                  <div className="space-y-1 mt-2">
+                    <h4 className="text-xs font-medium">Preview</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="text-[10px] text-muted-foreground mb-1">Input Value</div>
+                        <div className="h-8 flex items-center px-3 border rounded text-xs bg-muted/30">
+                          {valueSettings.formatType === "number" || valueSettings.formatType === "currency" ? "1234.56" : 
+                           valueSettings.formatType === "date" ? "2023-01-15" : 
+                           "Sample Value"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-muted-foreground mb-1">Formatted Output</div>
+                        <div className="h-8 flex items-center px-3 border rounded text-xs">
+                          {valueSettings.formatType === "number" ? 
+                            valueSettings.numberFormat === "1,000" ? "1,235" :
+                            valueSettings.numberFormat === "1,000.00" ? "1,234.56" :
+                            valueSettings.numberFormat === "1000" ? "1235" : "1234.56" :
+                           valueSettings.formatType === "currency" ?
+                            valueSettings.currencyFormat === "$1,000" ? 
+                              `${valueSettings.currencySymbol}1,235` : 
+                              `${valueSettings.currencySymbol}1,234.56` :
+                           valueSettings.formatType === "date" ?
+                            valueSettings.dateFormat === "MM/DD/YYYY" ? "01/15/2023" :
+                            valueSettings.dateFormat === "DD/MM/YYYY" ? "15/01/2023" :
+                            valueSettings.dateFormat === "YYYY-MM-DD" ? "2023-01-15" : "01/15/2023 12:00" :
+                           "Sample Value"}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </ScrollArea>
             ) : (
-              <div className="flex items-center justify-center h-[400px] border rounded-md bg-muted/20">
-                <p className="text-muted-foreground">
-                  Please select a column from the Available Columns tab
+              <div className="flex flex-col items-center justify-center h-[200px] border border-dashed rounded p-4">
+                <Columns className="h-8 w-8 text-muted-foreground mb-2" />
+                <h3 className="text-sm font-medium">No Column Selected</h3>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  Select a column from the list on the left
                 </p>
               </div>
             )}
           </div>
         );
-
+        
       case "component":
         return (
-          <div className="space-y-4">
+          <div className="space-y-3 px-1">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Component Configuration</h3>
+              <h3 className="text-sm font-medium flex items-center gap-1.5">
+                <Component className="h-3.5 w-3.5 text-primary" />
+                Component Configuration
+              </h3>
               {selectedColumn ? (
-                <div className="text-sm font-medium text-primary">
-                  Editing: {selectedColumn}
+                <div className="text-xs font-medium px-1.5 py-0.5 bg-primary/10 rounded text-primary">
+                  {selectedColumn}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  Select a column first
+                <div className="text-xs text-muted-foreground">
+                  Select a column
                 </div>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Configure cell renderers, editors, and filters.
-            </p>
-            <Separator className="my-2" />
+            <Separator className="my-1" />
 
             {selectedColumn ? (
-              <ScrollArea className="h-[400px] pr-4">
-                <div className="space-y-6">
-                  {/* Cell Renderer */}
-                  <div className="space-y-2">
-                    <Label htmlFor="cell-renderer">Cell Renderer</Label>
-                    <Select
-                      value={componentSettings.cellRenderer}
-                      onValueChange={(value) => {
-                        setComponentSettings((prev) => ({
-                          ...prev,
-                          cellRenderer: value,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "component",
-                          "cellRenderer",
-                        );
-                      }}
-                    >
-                      <SelectTrigger id="cell-renderer">
-                        <SelectValue placeholder="Select cell renderer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="date">Date Picker</SelectItem>
-                        <SelectItem value="dropdown">Dropdown</SelectItem>
-                        <SelectItem value="button">Button</SelectItem>
-                      </SelectContent>
-                    </Select>
+              <ScrollArea className="pr-2">
+                <div className="space-y-3">
+                  {/* Cell Renderer Selection */}
+                  <div className="space-y-2 rounded border p-2">
+                    <h4 className="text-xs font-medium">Cell Renderer</h4>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] mb-1 block text-muted-foreground">Renderer Type</Label>
+                      <Select
+                        value={componentSettings.cellRenderer}
+                        onValueChange={(value) => {
+                          setComponentSettings((prev) => ({
+                            ...prev,
+                            cellRenderer: value,
+                          }));
+                          trackPropertyChange(
+                            selectedColumn,
+                            "component",
+                            "cellRenderer",
+                          );
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue placeholder="Select renderer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Text</SelectItem>
+                          <SelectItem value="checkbox">Checkbox</SelectItem>
+                          <SelectItem value="date">Date</SelectItem>
+                          <SelectItem value="dropdown">Dropdown</SelectItem>
+                          <SelectItem value="button">Button</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  {/* Editable */}
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="editable"
-                      checked={componentSettings.editable}
-                      onChange={(e) => {
-                        setComponentSettings((prev) => ({
-                          ...prev,
-                          editable: e.target.checked,
-                        }));
-                        trackPropertyChange(
-                          selectedColumn,
-                          "component",
-                          "editable",
-                        );
-                      }}
-                      className="h-4 w-4"
-                    />
-                    <Label htmlFor="editable">Allow Editing</Label>
+                  {/* Editing Options */}
+                  <div className="space-y-2 rounded border p-2">
+                    <h4 className="text-xs font-medium">Editing Options</h4>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="editable"
+                        checked={componentSettings.editable}
+                        onCheckedChange={(checked) => {
+                          setComponentSettings((prev) => ({
+                            ...prev,
+                            editable: checked === true,
+                          }));
+                          trackPropertyChange(
+                            selectedColumn,
+                            "component",
+                            "editable",
+                          );
+                        }}
+                      />
+                      <Label 
+                        htmlFor="editable" 
+                        className="text-xs cursor-pointer"
+                      >
+                        Allow Editing
+                      </Label>
+                    </div>
                   </div>
 
-                  {/* Dropdown Options (if dropdown renderer) */}
+                  {/* Dropdown Options */}
                   {componentSettings.cellRenderer === "dropdown" && (
-                    <div className="space-y-2">
-                      <Label>Dropdown Options</Label>
-                      <div className="border rounded-md p-4 space-y-2">
-                        <p className="text-xs text-muted-foreground">
-                          Enter options for the dropdown, one per line
-                        </p>
-                        <textarea
-                          className="w-full h-24 p-2 border rounded-md"
-                          placeholder="Option 1&#10;Option 2&#10;Option 3"
-                          value={componentSettings.dropdownOptions.join("\n")}
-                          onChange={(e) => {
-                            const options = e.target.value
-                              .split("\n")
-                              .filter(Boolean);
+                    <div className="space-y-2 rounded border p-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-medium">Dropdown Options</h4>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-xs"
+                          onClick={() => {
                             setComponentSettings((prev) => ({
                               ...prev,
-                              dropdownOptions: options,
+                              dropdownOptions: [...prev.dropdownOptions, "New Option"],
                             }));
                             trackPropertyChange(
                               selectedColumn,
@@ -2168,15 +2569,66 @@ export function ColumnSettingsDialog({
                               "dropdownOptions",
                             );
                           }}
-                        />
+                        >
+                          Add Option
+                        </Button>
+                      </div>
+                      <div className="space-y-1 max-h-28 overflow-y-auto">
+                        {componentSettings.dropdownOptions.length > 0 ? (
+                          componentSettings.dropdownOptions.map((option, index) => (
+                            <div key={index} className="flex items-center space-x-1">
+                              <Input
+                                value={option}
+                                onChange={(e) => {
+                                  const newOptions = [...componentSettings.dropdownOptions];
+                                  newOptions[index] = e.target.value;
+                                  setComponentSettings((prev) => ({
+                                    ...prev,
+                                    dropdownOptions: newOptions,
+                                  }));
+                                  trackPropertyChange(
+                                    selectedColumn,
+                                    "component",
+                                    "dropdownOptions",
+                                  );
+                                }}
+                                className="h-6 text-xs flex-1"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={() => {
+                                  const newOptions = componentSettings.dropdownOptions.filter((_, i) => i !== index);
+                                  setComponentSettings((prev) => ({
+                                    ...prev,
+                                    dropdownOptions: newOptions,
+                                  }));
+                                  trackPropertyChange(
+                                    selectedColumn,
+                                    "component",
+                                    "dropdownOptions",
+                                  );
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-xs text-center text-muted-foreground py-2">
+                            No options added
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   {/* Filter Configuration */}
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="filter-type">Filter Type</Label>
+                  <div className="space-y-2 rounded border p-2">
+                    <h4 className="text-xs font-medium">Filter Configuration</h4>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] mb-1 block text-muted-foreground">Filter Type</Label>
                       <Select
                         value={componentSettings.filterType}
                         onValueChange={(value) => {
@@ -2191,7 +2643,7 @@ export function ColumnSettingsDialog({
                           );
                         }}
                       >
-                        <SelectTrigger id="filter-type">
+                        <SelectTrigger className="h-7 text-xs">
                           <SelectValue placeholder="Select filter type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2199,92 +2651,63 @@ export function ColumnSettingsDialog({
                           <SelectItem value="number">Number</SelectItem>
                           <SelectItem value="date">Date</SelectItem>
                           <SelectItem value="set">Set</SelectItem>
-                          <SelectItem value="custom">Custom</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {componentSettings.filterType === "set" && (
-                      <div className="space-y-2">
-                        <Label>Filter Options</Label>
-                        <div className="border rounded-md p-4 space-y-2">
-                          <p className="text-xs text-muted-foreground">
-                            Enter filter options, one per line
-                          </p>
-                          <textarea
-                            className="w-full h-24 p-2 border rounded-md"
-                            placeholder="Option 1&#10;Option 2&#10;Option 3"
-                            value={componentSettings.filterOptions.join("\n")}
-                            onChange={(e) => {
-                              const options = e.target.value
-                                .split("\n")
-                                .filter(Boolean);
-                              setComponentSettings((prev) => ({
-                                ...prev,
-                                filterOptions: options,
-                              }));
-                              trackPropertyChange(
-                                selectedColumn,
-                                "component",
-                                "filterOptions",
-                              );
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Preview */}
-                  <div className="space-y-2">
-                    <Label>Preview</Label>
-                    <div className="border p-4 rounded-md">
-                      {componentSettings.cellRenderer === "text" && (
-                        <div>Text Cell: Sample Value</div>
-                      )}
-                      {componentSettings.cellRenderer === "checkbox" && (
-                        <div className="flex items-center">
-                          <input type="checkbox" className="h-4 w-4 mr-2" />
-                          <span>Checkbox Cell</span>
-                        </div>
-                      )}
-                      {componentSettings.cellRenderer === "date" && (
-                        <div>Date Cell: 01/15/2023</div>
-                      )}
-                      {componentSettings.cellRenderer === "dropdown" && (
-                        <div>
-                          <select className="p-1 border rounded-md w-full">
-                            {componentSettings.dropdownOptions.length > 0 ? (
-                              componentSettings.dropdownOptions.map(
-                                (option, index) => (
-                                  <option key={index}>{option}</option>
-                                ),
-                              )
-                            ) : (
-                              <option>Dropdown Options</option>
-                            )}
-                          </select>
-                        </div>
-                      )}
-                      {componentSettings.cellRenderer === "button" && (
-                        <Button size="sm" variant="outline">
-                          Action
-                        </Button>
-                      )}
+                  {/* Component Preview */}
+                  <div className="space-y-1 mt-2">
+                    <h4 className="text-xs font-medium">Component Preview</h4>
+                    <div className="rounded border overflow-hidden">
+                      <div className="bg-muted/30 px-2 py-1 text-[10px] text-muted-foreground border-b">
+                        {componentSettings.cellRenderer.charAt(0).toUpperCase() + componentSettings.cellRenderer.slice(1)} Renderer
+                      </div>
+                      <div className="p-3 flex items-center justify-center">
+                        {componentSettings.cellRenderer === "text" && (
+                          <div className="text-xs">Sample Text Value</div>
+                        )}
+                        {componentSettings.cellRenderer === "checkbox" && (
+                          <Checkbox checked={true} />
+                        )}
+                        {componentSettings.cellRenderer === "date" && (
+                          <div className="text-xs border rounded px-2 py-1 bg-background">01/15/2023</div>
+                        )}
+                        {componentSettings.cellRenderer === "dropdown" && (
+                          <Select>
+                            <SelectTrigger className="h-7 text-xs w-32">
+                              <SelectValue placeholder="Select option" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {componentSettings.dropdownOptions.length > 0 ? 
+                                componentSettings.dropdownOptions.map((option, i) => (
+                                  <SelectItem key={i} value={option}>{option}</SelectItem>
+                                )) : 
+                                <SelectItem value="sample">Sample Option</SelectItem>
+                              }
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {componentSettings.cellRenderer === "button" && (
+                          <Button size="sm" className="h-7 text-xs">Action</Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </ScrollArea>
             ) : (
-              <div className="flex items-center justify-center h-[400px] border rounded-md bg-muted/20">
-                <p className="text-muted-foreground">
-                  Please select a column from the Available Columns tab
+              <div className="flex flex-col items-center justify-center h-[200px] border border-dashed rounded p-4">
+                <Columns className="h-8 w-8 text-muted-foreground mb-2" />
+                <h3 className="text-sm font-medium">No Column Selected</h3>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  Select a column from the list on the left
                 </p>
               </div>
             )}
           </div>
         );
-
+        
       default:
         return null;
     }
@@ -2292,691 +2715,93 @@ export function ColumnSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[1000px] p-0 gap-0 rounded-lg overflow-hidden" hideCloseButton>
-        <DialogHeader className="sr-only">
-          <DialogTitle>Column Settings</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col h-[650px]">
-          {/* Header with close button */}
-          <div className="border-b px-6 py-4 flex justify-between items-center bg-background">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
-                <Columns className="h-4 w-4 text-accent-foreground" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">
-                  Column Settings
-                </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Customize column appearance and behavior
-                </p>
-              </div>
-              {selectedColumn && (
-                <p className="text-sm text-muted-foreground ml-3">
-                  Editing:{" "}
-                  <span className="font-medium text-accent">
-                    {selectedColumn}
-                  </span>
-                </p>
-              )}
+      <DialogContent
+        className="column-settings-dialog max-w-[900px] max-h-[min(700px,calc(100vh-40px))] h-auto p-0 gap-0 flex flex-col"
+        onInteractOutside={(e) => {
+          // Prevent closing on outside clicks if there are pending changes
+          if (hasChanges) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <div className="flex-none">
+          <DialogHeader className="px-4 pt-3 pb-1 flex flex-row justify-between items-center">
+            <DialogTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Columns className="h-4 w-4 text-primary" />
+              Column Settings
+            </DialogTitle>
+          </DialogHeader>
+          <Separator className="mb-0.5" />
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar */}
+          <div className="w-52 border-r h-full flex flex-col">
+            <div className="p-1.5">
+              <h3 className="font-medium px-1.5 py-1 text-xs">Columns</h3>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleClose(false)}
-              className="h-8 w-8 rounded-md"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex-1 overflow-hidden">
+              {renderColumnList()}
+            </div>
           </div>
 
-          <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar with columns list */}
-            <div className="w-64 border-r flex flex-col bg-muted/5">
-              {/* Search input */}
-              <div className="p-4 border-b">
-                <h3 className="text-sm font-medium mb-2">
-                  Available Columns
-                </h3>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search columns..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-7 h-8 text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Columns list */}
-              <ScrollArea className="flex-1 py-2">
-                <div className="px-2 space-y-0.5">
-                  {columns
-                    .filter((col) =>
-                      col.colId
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase()),
-                    )
-                    .map((column) => (
-                      <button
-                        key={column.colId}
-                        className={cn(
-                          "flex items-center justify-between w-full px-3 py-2 text-sm rounded-md text-left transition-colors",
-                          selectedColumn === column.colId
-                            ? "bg-accent/80 text-accent-foreground font-medium"
-                            : "text-foreground hover:bg-muted",
-                        )}
-                        onClick={() => {
-                          // Set the selected column
-                          setSelectedColumn(column.colId);
-
-                          // Load current settings for this column
-                          const col = columns.find(
-                            (c) => c.colId === column.colId,
-                          );
-                          if (col) {
-                            // Find the matching column definition for more details
-                            const colDef = columnDefs.find(
-                              (def) =>
-                                def.field === column.colId ||
-                                def.colId === column.colId,
-                            );
-
-                            console.log(
-                              "Found column definition for selection:",
-                              colDef,
-                            );
-
-                            // Update header settings
-                            const headerText =
-                              colDef?.headerName || col.headerName || col.colId;
-                            console.log(
-                              `Setting header text to: ${headerText} for column ${column.colId}`,
-                            );
-
-                            // Create a complete set of header settings from the saved column definition
-                            const newHeaderSettings = {
-                              // Start with defaults
-                              ...headerSettings,
-                              // Update with the settings from the column definition
-                              text: headerText,
-                            };
-
-                            // Apply header alignment if it exists
-                            if (colDef?.headerStyle?.justifyContent) {
-                              if (
-                                colDef.headerStyle.justifyContent === "center"
-                              ) {
-                                newHeaderSettings.alignment = "center";
-                              } else if (
-                                colDef.headerStyle.justifyContent === "flex-end"
-                              ) {
-                                newHeaderSettings.alignment = "right";
-                              } else {
-                                newHeaderSettings.alignment = "left";
-                              }
-                              console.log(
-                                `Setting header alignment to: ${newHeaderSettings.alignment}`,
-                              );
-                            } else if (colDef?.headerClass) {
-                              // Check for alignment in the header class
-                              if (colDef.headerClass.includes("center")) {
-                                newHeaderSettings.alignment = "center";
-                              } else if (colDef.headerClass.includes("right")) {
-                                newHeaderSettings.alignment = "right";
-                              } else {
-                                newHeaderSettings.alignment = "left";
-                              }
-                              console.log(
-                                `Setting header alignment from class to: ${newHeaderSettings.alignment}`,
-                              );
-                            }
-
-                            // Apply other header styles if they exist
-                            if (colDef?.headerStyle) {
-                              if (colDef.headerStyle.color)
-                                newHeaderSettings.textColor =
-                                  colDef.headerStyle.color;
-                              if (colDef.headerStyle.backgroundColor)
-                                newHeaderSettings.backgroundColor =
-                                  colDef.headerStyle.backgroundColor;
-                              if (colDef.headerStyle.fontFamily)
-                                newHeaderSettings.fontFamily =
-                                  colDef.headerStyle.fontFamily;
-                              if (colDef.headerStyle.fontSize) {
-                                // Extract the number from fontSize (e.g., "14px" -> 14)
-                                const fontSizeMatch =
-                                  colDef.headerStyle.fontSize.match(/(\d+)/);
-                                if (fontSizeMatch) {
-                                  newHeaderSettings.fontSize = parseInt(
-                                    fontSizeMatch[1],
-                                  );
-                                }
-                              }
-                              if (colDef.headerStyle.fontWeight)
-                                newHeaderSettings.fontWeight =
-                                  colDef.headerStyle.fontWeight;
-                              if (colDef.headerStyle.fontStyle)
-                                newHeaderSettings.fontStyle =
-                                  colDef.headerStyle.fontStyle;
-
-                              // Header Border styles
-                              // Border top
-                              if (colDef.headerStyle.borderTop) {
-                                if (colDef.headerStyle.borderTop !== "none") {
-                                  newHeaderSettings.borderTop = true;
-                                  // Parse the border string (e.g. "1px solid #cccccc")
-                                  const borderMatch =
-                                    colDef.headerStyle.borderTop.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newHeaderSettings.borderTopWidth = parseInt(
-                                      borderMatch[1],
-                                    );
-                                    newHeaderSettings.borderTopStyle =
-                                      borderMatch[2];
-                                    newHeaderSettings.borderTopColor =
-                                      borderMatch[3];
-                                  }
-                                } else {
-                                  newHeaderSettings.borderTop = false;
-                                }
-                              }
-
-                              // Border right
-                              if (colDef.headerStyle.borderRight) {
-                                if (colDef.headerStyle.borderRight !== "none") {
-                                  newHeaderSettings.borderRight = true;
-                                  const borderMatch =
-                                    colDef.headerStyle.borderRight.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newHeaderSettings.borderRightWidth =
-                                      parseInt(borderMatch[1]);
-                                    newHeaderSettings.borderRightStyle =
-                                      borderMatch[2];
-                                    newHeaderSettings.borderRightColor =
-                                      borderMatch[3];
-                                  }
-                                } else {
-                                  newHeaderSettings.borderRight = false;
-                                }
-                              }
-
-                              // Border bottom
-                              if (colDef.headerStyle.borderBottom) {
-                                if (
-                                  colDef.headerStyle.borderBottom !== "none"
-                                ) {
-                                  newHeaderSettings.borderBottom = true;
-                                  const borderMatch =
-                                    colDef.headerStyle.borderBottom.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newHeaderSettings.borderBottomWidth =
-                                      parseInt(borderMatch[1]);
-                                    newHeaderSettings.borderBottomStyle =
-                                      borderMatch[2];
-                                    newHeaderSettings.borderBottomColor =
-                                      borderMatch[3];
-                                  }
-                                } else {
-                                  newHeaderSettings.borderBottom = false;
-                                }
-                              }
-
-                              // Border left
-                              if (colDef.headerStyle.borderLeft) {
-                                if (colDef.headerStyle.borderLeft !== "none") {
-                                  newHeaderSettings.borderLeft = true;
-                                  const borderMatch =
-                                    colDef.headerStyle.borderLeft.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newHeaderSettings.borderLeftWidth =
-                                      parseInt(borderMatch[1]);
-                                    newHeaderSettings.borderLeftStyle =
-                                      borderMatch[2];
-                                    newHeaderSettings.borderLeftColor =
-                                      borderMatch[3];
-                                  }
-                                } else {
-                                  newHeaderSettings.borderLeft = false;
-                                }
-                              }
-                            }
-
-                            // Update header settings state
-                            setHeaderSettings(newHeaderSettings);
-
-                            // Create a complete set of cell settings from the saved column definition
-                            const newCellSettings = {
-                              // Start with defaults
-                              ...cellSettings,
-                            };
-
-                            // Apply cell styles if they exist
-                            if (colDef?.cellStyle) {
-                              // Cell alignment
-                              if (colDef.cellStyle.textAlign) {
-                                newCellSettings.alignment =
-                                  colDef.cellStyle.textAlign;
-                                console.log(
-                                  `Setting cell alignment to: ${newCellSettings.alignment}`,
-                                );
-                              }
-
-                              // Other cell styles
-                              if (colDef.cellStyle.color)
-                                newCellSettings.textColor =
-                                  colDef.cellStyle.color;
-                              if (colDef.cellStyle.backgroundColor)
-                                newCellSettings.backgroundColor =
-                                  colDef.cellStyle.backgroundColor;
-                              if (colDef.cellStyle.fontFamily)
-                                newCellSettings.fontFamily =
-                                  colDef.cellStyle.fontFamily;
-                              if (colDef.cellStyle.fontSize) {
-                                // Extract the number from fontSize (e.g., "14px" -> 14)
-                                const fontSizeMatch =
-                                  colDef.cellStyle.fontSize.match(/(\d+)/);
-                                if (fontSizeMatch) {
-                                  newCellSettings.fontSize = parseInt(
-                                    fontSizeMatch[1],
-                                  );
-                                }
-                              }
-                              if (colDef.cellStyle.fontWeight)
-                                newCellSettings.fontWeight =
-                                  colDef.cellStyle.fontWeight;
-                              if (colDef.cellStyle.fontStyle)
-                                newCellSettings.fontStyle =
-                                  colDef.cellStyle.fontStyle;
-
-                              // Border styles
-                              // Border top
-                              if (colDef.cellStyle.borderTop) {
-                                if (colDef.cellStyle.borderTop !== "none") {
-                                  newCellSettings.borderTop = true;
-                                  // Parse the border string (e.g. "1px solid #cccccc")
-                                  const borderMatch =
-                                    colDef.cellStyle.borderTop.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newCellSettings.borderTopWidth = parseInt(
-                                      borderMatch[1],
-                                    );
-                                    newCellSettings.borderTopStyle =
-                                      borderMatch[2];
-                                    newCellSettings.borderTopColor =
-                                      borderMatch[3];
-                                  }
-                                }
-                              }
-
-                              // Border right
-                              if (colDef.cellStyle.borderRight) {
-                                if (colDef.cellStyle.borderRight !== "none") {
-                                  newCellSettings.borderRight = true;
-                                  const borderMatch =
-                                    colDef.cellStyle.borderRight.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newCellSettings.borderRightWidth = parseInt(
-                                      borderMatch[1],
-                                    );
-                                    newCellSettings.borderRightStyle =
-                                      borderMatch[2];
-                                    newCellSettings.borderRightColor =
-                                      borderMatch[3];
-                                  }
-                                }
-                              }
-
-                              // Border bottom
-                              if (colDef.cellStyle.borderBottom) {
-                                if (colDef.cellStyle.borderBottom !== "none") {
-                                  newCellSettings.borderBottom = true;
-                                  const borderMatch =
-                                    colDef.cellStyle.borderBottom.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newCellSettings.borderBottomWidth =
-                                      parseInt(borderMatch[1]);
-                                    newCellSettings.borderBottomStyle =
-                                      borderMatch[2];
-                                    newCellSettings.borderBottomColor =
-                                      borderMatch[3];
-                                  }
-                                }
-                              }
-
-                              // Border left
-                              if (colDef.cellStyle.borderLeft) {
-                                if (colDef.cellStyle.borderLeft !== "none") {
-                                  newCellSettings.borderLeft = true;
-                                  const borderMatch =
-                                    colDef.cellStyle.borderLeft.match(
-                                      /(\d+)px\s+(\w+)\s+(#\w+)/,
-                                    );
-                                  if (borderMatch) {
-                                    newCellSettings.borderLeftWidth = parseInt(
-                                      borderMatch[1],
-                                    );
-                                    newCellSettings.borderLeftStyle =
-                                      borderMatch[2];
-                                    newCellSettings.borderLeftColor =
-                                      borderMatch[3];
-                                  }
-                                }
-                              }
-                            }
-
-                            // Update cell settings state
-                            setCellSettings(newCellSettings);
-
-                            // Update component settings
-                            const newComponentSettings = {
-                              ...componentSettings,
-                              cellRenderer:
-                                colDef?.cellRenderer ||
-                                col.cellRenderer ||
-                                "text",
-                              editable: colDef?.editable !== false, // Default to true if not specified
-                            };
-
-                            if (colDef?.filter) {
-                              newComponentSettings.filterType =
-                                typeof colDef.filter === "string"
-                                  ? colDef.filter
-                                      .replace("ag", "")
-                                      .replace("ColumnFilter", "")
-                                  : "text";
-                            }
-
-                            // Detect value formatter
-                            const newValueSettings = { ...valueSettings };
-
-                            // Detect if it has valueFormatter defined
-                            if (colDef?.valueFormatter) {
-                              // Try to determine the formatter type by inspecting its code
-                              // or surrounding properties
-                              let formatterType = "text";
-
-                              // Look for clues in the function's string representation
-                              const formatterStr =
-                                colDef.valueFormatter.toString();
-
-                              // Check for currency formatter
-                              if (
-                                formatterStr.includes("style: 'currency'") ||
-                                formatterStr.includes("currency:") ||
-                                formatterStr.includes("$") ||
-                                (colDef.field || "")
-                                  .toLowerCase()
-                                  .includes("price") ||
-                                (colDef.field || "")
-                                  .toLowerCase()
-                                  .includes("cost")
-                              ) {
-                                formatterType = "currency";
-                                newValueSettings.formatType = "currency";
-
-                                // Try to determine currency symbol
-                                if (formatterStr.includes("currency: 'USD'")) {
-                                  newValueSettings.currencySymbol = "$";
-                                } else if (
-                                  formatterStr.includes("currency: 'EUR'")
-                                ) {
-                                  newValueSettings.currencySymbol = "€";
-                                } else if (
-                                  formatterStr.includes("currency: 'GBP'")
-                                ) {
-                                  newValueSettings.currencySymbol = "£";
-                                }
-
-                                // Try to determine format
-                                if (
-                                  formatterStr.includes(
-                                    "minimumFractionDigits: 0",
-                                  )
-                                ) {
-                                  newValueSettings.currencyFormat = "$1,000";
-                                } else if (
-                                  formatterStr.includes(
-                                    "minimumFractionDigits: 2",
-                                  )
-                                ) {
-                                  newValueSettings.currencyFormat = "$1,000.00";
-                                }
-                              }
-                              // Check for number formatter
-                              else if (
-                                formatterStr.includes("NumberFormat") ||
-                                formatterStr.includes(
-                                  "minimumFractionDigits",
-                                ) ||
-                                formatterStr.includes("maximumFractionDigits")
-                              ) {
-                                formatterType = "number";
-                                newValueSettings.formatType = "number";
-
-                                // Try to determine format
-                                if (
-                                  formatterStr.includes("useGrouping: true") ||
-                                  formatterStr.includes(
-                                    "useGrouping: undefined",
-                                  )
-                                ) {
-                                  if (
-                                    formatterStr.includes(
-                                      "minimumFractionDigits: 0",
-                                    ) &&
-                                    formatterStr.includes(
-                                      "maximumFractionDigits: 0",
-                                    )
-                                  ) {
-                                    newValueSettings.numberFormat = "1,000";
-                                  } else if (
-                                    formatterStr.includes(
-                                      "minimumFractionDigits: 2",
-                                    ) &&
-                                    formatterStr.includes(
-                                      "maximumFractionDigits: 2",
-                                    )
-                                  ) {
-                                    newValueSettings.numberFormat = "1,000.00";
-                                  }
-                                } else {
-                                  if (
-                                    formatterStr.includes(
-                                      "minimumFractionDigits: 0",
-                                    ) &&
-                                    formatterStr.includes(
-                                      "maximumFractionDigits: 0",
-                                    )
-                                  ) {
-                                    newValueSettings.numberFormat = "1000";
-                                  } else if (
-                                    formatterStr.includes(
-                                      "minimumFractionDigits: 2",
-                                    ) &&
-                                    formatterStr.includes(
-                                      "maximumFractionDigits: 2",
-                                    )
-                                  ) {
-                                    newValueSettings.numberFormat = "1000.00";
-                                  }
-                                }
-                              }
-                              // Check for date formatter
-                              else if (
-                                formatterStr.includes("Date(") ||
-                                formatterStr.includes("DateTimeFormat") ||
-                                formatterStr.includes("toLocaleDateString")
-                              ) {
-                                formatterType = "date";
-                                newValueSettings.formatType = "date";
-
-                                // Try to determine format
-                                if (
-                                  formatterStr.includes("hour:") &&
-                                  formatterStr.includes("minute:")
-                                ) {
-                                  newValueSettings.dateFormat =
-                                    "MM/DD/YYYY hh:mm";
-                                } else {
-                                  newValueSettings.dateFormat = "MM/DD/YYYY";
-                                }
-                              }
-
-                              console.log(
-                                `Detected value formatter type: ${formatterType}`,
-                              );
-                            }
-
-                            // Update the value settings state
-                            setValueSettings(newValueSettings);
-
-                            setComponentSettings(newComponentSettings);
-
-                            // Reset changed properties for this column
-                            setChangedProperties((prev) => {
-                              const newChangedProps = { ...prev };
-                              // Remove any existing changes for this column
-                              delete newChangedProps[column.colId];
-                              return newChangedProps;
-                            });
-
-                            // Reset the hasChanges flag if there are no other changes
-                            setTimeout(() => {
-                              const hasOtherChanges =
-                                Object.keys(changedProperties).length > 0;
-                              if (!hasOtherChanges) {
-                                setHasChanges(false);
-                              }
-                            }, 0);
-                          }
-                        }}
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Tabs for each section */}
+            <div className="border-b">
+              <div className="px-2">
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)}>
+                  <TabsList className="w-full justify-start h-8 p-0 bg-transparent border-b-0">
+                    {sidebarItems.map((item) => (
+                      <TabsTrigger 
+                        key={item.id} 
+                        value={item.id}
+                        className="flex items-center gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-3 h-full text-xs"
                       >
-                        <span className="truncate">{column.colId}</span>
-                        {selectedColumn === column.colId && (
-                          <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center ml-1">
-                            <Check className="h-3 w-3" />
-                          </div>
-                        )}
-                      </button>
+                        {item.icon}
+                        <span className="hidden sm:inline">{item.label}</span>
+                      </TabsTrigger>
                     ))}
-                  {columns.filter((col) =>
-                    col.colId.toLowerCase().includes(searchTerm.toLowerCase()),
-                  ).length === 0 && (
-                    <div className="flex flex-col items-center justify-center p-6 text-center">
-                      <div className="h-8 w-8 rounded-full bg-muted/30 flex items-center justify-center mb-2">
-                        <Search className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        No columns found
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 flex flex-col bg-background">
-              {/* Horizontal tabs */}
-              {selectedColumn && (
-                <div className="px-6 pt-4 pb-0 border-b">
-                  <div className="flex space-x-2">
-                    {sidebarItems.map((item) => {
-                      const isActive = activeTab === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-                            isActive
-                              ? "border-accent text-accent"
-                              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
-                          )}
-                          onClick={() => setActiveTab(item.id)}
-                          disabled={!selectedColumn}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Tab Content */}
-              <div className="flex-1 overflow-hidden">
-                <div className="p-6 h-full overflow-auto">
-                  {selectedColumn ? (
-                    renderTabContent()
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="text-muted-foreground">
-                        <div className="h-20 w-20 rounded-full bg-muted/20 flex items-center justify-center mx-auto mb-6">
-                          <Columns className="h-10 w-10 text-muted-foreground/60" />
-                        </div>
-                        <h3 className="text-lg font-medium text-foreground">
-                          No Column Selected
-                        </h3>
-                        <p className="max-w-md mt-2 text-muted-foreground">
-                          Please select a column from the sidebar to configure
-                          its settings.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="px-6 py-4 border-t flex items-center justify-between">
-                <div className="text-xs text-muted-foreground">
-                  {hasChanges && "Changes will be applied when you save"}
-                </div>
-                <div className="flex gap-2">
-                  {/* Debug button removed */}
-                  <Button
-                    variant="outline"
-                    onClick={resetColumns}
-                    disabled={!hasChanges}
-                    size="sm"
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleClose(false)}
-                    size="sm"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={applyChanges}
-                    disabled={!hasChanges}
-                    size="sm"
-                  >
-                    Save Changes
-                  </Button>
-                </div>
-              </div>
+            {/* Tab content */}
+            <div className="flex-1 p-3">
+              {renderTabContent()}
             </div>
           </div>
         </div>
+
+        <DialogFooter className="flex-none py-1.5 px-3 border-t bg-muted/10">
+          <div className="flex items-center gap-1 mr-auto">
+            {hasChanges && (
+              <div className="text-xs text-amber-600 flex items-center gap-1">
+                <Circle className="h-1.5 w-1.5 fill-amber-600" />
+                Unsaved changes
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleClose(false)}
+            className="h-6 text-xs mr-1.5"
+          >
+            <XCircle className="h-3 w-3 mr-1" />
+            Cancel
+          </Button>
+          <Button 
+            size="sm"
+            onClick={() => applyChanges()} 
+            disabled={!hasChanges || !selectedColumn}
+            className="h-6 text-xs"
+          >
+            <Save className="h-3 w-3 mr-1" />
+            Save
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

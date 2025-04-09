@@ -1,5 +1,11 @@
-/* Hide the default close button in the settings dialogs */
-.column-settings-dialog [data-radix-dialog-close],
-.general-settings-dialog [data-radix-dialog-close] {
+/* Hide the default close button only in column settings dialog */
+.column-settings-dialog [data-radix-dialog-close] {
   display: none !important;
+}
+
+/* Make the close button in general settings dialog clearly visible */
+.general-settings-dialog [data-radix-dialog-close] {
+  opacity: 1 !important;
+  z-index: 50 !important; /* Ensure it's above other elements */
+  pointer-events: auto !important; /* Make sure it receives click events */
 }
