@@ -5,14 +5,12 @@ import { AgGridReact } from "ag-grid-react";
 import { DataTableToolbar } from "./Toolbar/DataTableToolbar";
 
 import { ProfilesDialog } from "./Settings/Profiles/ProfilesDialog";
-import { GeneralSettingsDialog } from "./Settings/General/GeneralSettingsDialog";
 import { PropertyGridDialog } from "./Settings/General/PropertyGridDialog";
 import { ColumnSettingsDialog } from "./Settings/Columns/ColumnSettingsDialog";
 import { useThemeSync } from "./hooks/useThemeSync";
-import { useGrid } from "./hooks/useGridStore";
+import { useGridStore } from "./store/gridStore";
 import { generateColumnDefsFromData, GridRowData, defaultColDef } from "./utils/dataTableHelpers";
 import { createGridTheme, applyGridStyles, createGridTransitionsStyle } from "./utils/gridStyling";
-import { applyGridOptions } from "./utils/gridOptionsApplier";
 import { monospacefonts } from "./utils/constants";
 import "./styles/gridOptions.css";
 
@@ -36,29 +34,25 @@ export function DataTable({
   gridOptions: externalGridOptions,
   onThemeChange
 }: DataTableProps) {
-  // Use the grid store
-  const {
-    spacing,
-    fontSize,
-    selectedFont,
-    columnState,
-    columnDefs: storedColumnDefs,
-    filterModel,
-    sortModel,
-    gridOptions,
-    profiles,
-    selectedProfileId,
-    setSpacing,
-    setFontSize,
-    setSelectedFont,
-    setColumnState,
-    setColumnDefs,
-    setFilterModel,
-    setSortModel,
-    setGridOptions,
-    saveToProfile,
-    selectProfile
-  } = useGrid();
+  // Use the grid store with selectors
+  const spacing = useGridStore(state => state.spacing);
+  const fontSize = useGridStore(state => state.fontSize);
+  const selectedFont = useGridStore(state => state.selectedFont);
+  const gridOptions = useGridStore(state => state.gridOptions); // Needed for sanitizedGridOptions & handleSaveProfile
+  const profiles = useGridStore(state => state.profiles); // Needed for Toolbar
+  const selectedProfileId = useGridStore(state => state.selectedProfileId); // Needed for Toolbar & useEffect
+
+  // Select actions
+  const setSpacing = useGridStore(state => state.setSpacing);
+  const setFontSize = useGridStore(state => state.setFontSize);
+  const setSelectedFont = useGridStore(state => state.setSelectedFont);
+  const setColumnState = useGridStore(state => state.setColumnState);
+  const setColumnDefs = useGridStore(state => state.setColumnDefs);
+  const setFilterModel = useGridStore(state => state.setFilterModel);
+  const setSortModel = useGridStore(state => state.setSortModel); // Needed for handleSaveProfile
+  const setGridOptions = useGridStore(state => state.setGridOptions); // Needed for handleSaveProfile
+  const saveToProfile = useGridStore(state => state.saveToProfile);
+  const selectProfile = useGridStore(state => state.selectProfile);
 
   // Local state for UI components
   const [profilesDialogOpen, setProfilesDialogOpen] = useState(false);
@@ -66,9 +60,6 @@ export function DataTable({
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
   const [gridReady, setGridReady] = useState(false);
   const gridRef = useRef<AgGridReact>(null);
-
-  // Add state to explicitly trigger settings application
-  const [applySettingsTrigger, setApplySettingsTrigger] = useState(0);
 
   // Use a unique ID for this grid instance
   const gridId = id || `grid-${Math.random().toString(36).substring(2, 11)}`;
@@ -165,104 +156,20 @@ export function DataTable({
     }
   }, [gridId, setFontSize]);
 
-  // Track when we need to refresh the grid
-  const [needsRefresh, setNeedsRefresh] = useState(false);
-
-  // Flag to suppress grid refreshes during save profile operations
-  const [suppressGridRefresh, setSuppressGridRefresh] = useState(false);
-
-  // Flag to track when settings have changed and need to be applied
-  const [settingsChanged, setSettingsChanged] = useState(false);
+  // REMOVED: Unused state variable
+  // const [suppressGridRefresh, setSuppressGridRefresh] = useState(false);
+  // Restore setter for use in batchUpdate, ignore state variable
+  const [, setSuppressGridRefresh] = useState(false);
 
   // Track the last applied settings to avoid unnecessary updates
+  // Linter flags 'any', but using specific types might require importing them
+  // Leaving as 'any' for now to avoid further potential issues
   const lastAppliedSettings = useRef({
     gridOptions: null as any,
     columnDefs: null as any,
     columnState: null as any,
     filterModel: null as any
   });
-
-  // Detect when any settings change
-  useEffect(() => {
-    // Check if grid refreshes are suppressed (during save profile operation)
-    if (suppressGridRefresh) {
-      console.log('Settings change detection suppressed during save profile operation');
-      return;
-    }
-
-    // Check if any settings have changed
-    const gridOptionsChanged = gridOptions !== lastAppliedSettings.current.gridOptions;
-    const columnDefsChanged = storedColumnDefs !== lastAppliedSettings.current.columnDefs;
-    const columnStateChanged = columnState !== lastAppliedSettings.current.columnState;
-    const filterModelChanged = filterModel !== lastAppliedSettings.current.filterModel;
-
-    if (gridOptionsChanged || columnDefsChanged || columnStateChanged || filterModelChanged) {
-      console.log('Settings changed, marking for update');
-      setSettingsChanged(true);
-    }
-  }, [gridOptions, storedColumnDefs, columnState, filterModel, suppressGridRefresh]);
-
-  // Apply settings in the correct order ONLY when explicitly triggered
-  useEffect(() => {
-    // Don't run if not ready or if trigger hasn't changed (initial state 0)
-    if (!gridReady || !gridRef.current?.api || applySettingsTrigger === 0) {
-      return;
-    }
-
-    console.log(`Applying settings due to trigger: ${applySettingsTrigger}`);
-
-    // Store a reference to the grid API to avoid null checks
-    const gridApi = gridRef.current.api;
-
-    // 1. First apply general settings (grid options)
-    // Use sanitizedGridOptions which is already memoized
-    if (sanitizedGridOptions && sanitizedGridOptions !== lastAppliedSettings.current.gridOptions) {
-      console.log('1. Applying grid options:', sanitizedGridOptions);
-      // We pass options declaratively now, but keep track of what was applied
-      lastAppliedSettings.current.gridOptions = sanitizedGridOptions;
-      // applyGridOptions might still be needed if it does more than setGridOption
-      // If applyGridOptions just sets options, it might be redundant with the declarative prop
-      // applyGridOptions(gridRef, gridId, sanitizedGridOptions); // Review if needed
-    }
-
-    // 2. Second apply column definition settings FROM THE STORE
-    // Check if stored definitions exist and have changed since last apply
-    if (storedColumnDefs && storedColumnDefs.length > 0 && storedColumnDefs !== lastAppliedSettings.current.columnDefs) {
-      console.log('2. Applying stored column definitions:', storedColumnDefs);
-      // Apply the definitions saved in the store
-      gridApi.setGridOption('columnDefs', storedColumnDefs);
-      // Update the last applied setting reference
-      lastAppliedSettings.current.columnDefs = storedColumnDefs;
-    }
-
-    // 3. Lastly apply column state and other settings extracted directly from AG-Grid
-    if (columnState && columnState.length > 0 && columnState !== lastAppliedSettings.current.columnState) {
-      console.log('3. Applying column state:', columnState);
-      gridApi.applyColumnState({
-        state: columnState,
-        applyOrder: true
-      });
-      lastAppliedSettings.current.columnState = columnState;
-    }
-
-    // Apply filter model if available
-    if (filterModel && Object.keys(filterModel).length > 0 && filterModel !== lastAppliedSettings.current.filterModel) {
-      console.log('4. Applying filter model:', filterModel);
-      gridApi.setFilterModel(filterModel);
-      lastAppliedSettings.current.filterModel = filterModel;
-    }
-
-    // Now refresh the grid once after all settings have been applied
-    console.log('5. Refreshing grid after all triggered settings have been applied');
-    gridApi.refreshCells({ force: true });
-    gridApi.redrawRows();
-
-    // Reset flags if they were used (might be removable)
-    // setSettingsChanged(false);
-    // setNeedsRefresh(false);
-
-    // Depend on the trigger and the state values needed *inside* the effect
-  }, [gridReady, applySettingsTrigger, sanitizedGridOptions, storedColumnDefs, columnState, filterModel, gridId]);
 
   // Load the selected profile when the component mounts
   // This ensures the grid loads the last selected profile when the app reloads
@@ -301,7 +208,6 @@ export function DataTable({
     // No event listeners for automatic state saving
     // Grid state will only be extracted when explicitly saving a profile
 
-    // Initial application of options/state is now handled by the main settings effect triggered below
     console.log("Grid is ready.");
 
     // Add event listeners for debugging (keep if useful)
@@ -309,11 +215,157 @@ export function DataTable({
       // ... existing debug listeners ...
     }
 
-    // Trigger initial settings application
-    console.log("Triggering initial settings apply on grid ready");
-    setApplySettingsTrigger(prev => prev + 1); // Initial trigger
+  }, [gridId, gridRef]); // Removed applySettingsToGrid from dependencies
 
-  }, [gridId, gridRef]); // Simplified dependencies
+  // Memoize the combined grid options passed to AgGridReact
+  const memoizedGridOptions = useMemo(() => {
+    // Start with external options, then override with sanitized store options
+    return {
+      ...externalGridOptions, // Apply external first
+      ...sanitizedGridOptions // Override with sanitized store options
+    };
+    // Dependencies ensure this recalculates if either source changes
+  }, [externalGridOptions, sanitizedGridOptions]);
+
+  // ** Moved suppressKeyboardEvent definition earlier **
+  const suppressKeyboardEvent = useCallback((params: SuppressKeyboardEventParams) => {
+    const { event, editing, api } = params;
+    console.log('suppressKeyboardEvent called:', {
+      key: event.key,
+      editing,
+      type: event.type,
+      target: event.target instanceof HTMLElement ? event.target.tagName : 'unknown'
+    });
+
+    // Handle arrow keys during editing
+    if (editing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      // Check if custom navigation after edit is enabled in grid options
+      const useCustomNavigation = sanitizedGridOptions?.useCustomNavigation === true;
+      console.log('useCustomNavigation enabled:', useCustomNavigation);
+
+      // If the feature is disabled, don't suppress the event
+      if (!useCustomNavigation) {
+        console.log('Feature disabled, not handling arrow keys');
+        return false;
+      }
+
+      // Stop editing and save changes
+      console.log('Stopping edit and saving changes');
+      api.stopEditing();
+
+      // Get the current focused cell
+      const focusedCell = api.getFocusedCell();
+      if (!focusedCell) {
+        console.log('No focused cell found');
+        return true; // Suppress the event anyway
+      }
+
+      console.log('Current focused cell:', focusedCell);
+
+      // Calculate the next row index
+      const nextRowIndex = event.key === 'ArrowUp' ?
+        focusedCell.rowIndex - 1 :
+        focusedCell.rowIndex + 1;
+
+      console.log('Moving to row:', nextRowIndex);
+
+      // Set focus to the next cell
+      setTimeout(() => {
+        api.setFocusedCell(nextRowIndex, focusedCell.column);
+      }, 0);
+
+      // Suppress the default event
+      return true;
+    }
+
+    // Don't suppress other events
+    return false;
+  }, [sanitizedGridOptions]);
+
+  // Memoize defaultColDef to ensure stability
+  const memoizedDefaultColDef = useMemo(() => ({
+    ...defaultColDef,
+    suppressKeyboardEvent: suppressKeyboardEvent // Now defined earlier
+  }), [suppressKeyboardEvent]);
+
+  // ** Define applySettingsToGrid function BEFORE it is used **
+  // Define explicit function to apply store state to the grid
+  const applySettingsToGrid = useCallback(() => {
+    if (!gridReady || !gridRef.current?.api) {
+      console.log('Grid not ready or API not available, cannot apply settings');
+      return;
+    }
+
+    console.log('Applying settings to grid');
+
+    // Store a reference to the grid API to avoid null checks
+    const gridApi = gridRef.current.api;
+
+    // Get the LATEST state directly from the store when applying
+    const latestState = useGridStore.getState();
+    const latestStoredColumnDefs = latestState.columnDefs;
+    const latestColumnState = latestState.columnState;
+    const latestFilterModel = latestState.filterModel;
+    const latestGridOptions = latestState.gridOptions;
+
+    // Apply column definitions with state
+    if (latestStoredColumnDefs && latestStoredColumnDefs !== lastAppliedSettings.current.columnDefs) {
+      console.log('Applying column definitions with state');
+      gridApi.setGridOption('columnDefs', latestStoredColumnDefs);
+      lastAppliedSettings.current.columnDefs = latestStoredColumnDefs;
+    }
+
+    // Apply column state
+    if (latestColumnState && latestColumnState !== lastAppliedSettings.current.columnState) {
+      console.log('Applying column state');
+      gridApi.applyColumnState({
+        state: latestColumnState,
+        applyOrder: true
+      });
+       lastAppliedSettings.current.columnState = latestColumnState;
+    }
+
+    // Apply filter model
+    if (latestFilterModel && latestFilterModel !== lastAppliedSettings.current.filterModel) {
+      console.log('Applying filter model');
+      gridApi.setFilterModel(latestFilterModel);
+      lastAppliedSettings.current.filterModel = latestFilterModel;
+    }
+
+    // Apply grid options
+    // Check gridOptions reference before applying
+    if (latestGridOptions && latestGridOptions !== lastAppliedSettings.current.gridOptions) {
+      console.log('Applying grid options');
+       // FIX: Call applyGridOptions with correct arguments (assuming it's still needed alongside declarative props)
+       // Review if applyGridOptions utility is still necessary
+       // applyGridOptions(gridRef, gridId, latestGridOptions);
+      lastAppliedSettings.current.gridOptions = latestGridOptions;
+    }
+
+    // Refresh grid
+    console.log("Refreshing grid after explicit apply");
+    gridApi.refreshCells({force: true});
+    gridApi.redrawRows();
+
+    console.log('Settings applied to grid');
+
+    // Note: We removed comparison logic inside applyGridOptions calls
+    // and instead rely on lastAppliedSettings.current comparison here.
+  }, [
+    gridReady,
+    gridRef,
+    gridId, // gridId needed for applyGridOptions if restored
+   ]);
+
+  // Effect to apply initial settings once store is hydrated and grid is ready
+  const isHydrated = useGridStore.persist.hasHydrated();
+
+  useEffect(() => {
+    if (isHydrated && gridReady) {
+      console.log("Store hydrated and grid ready, applying initial settings.");
+      applySettingsToGrid();
+    }
+  }, [isHydrated, gridReady, applySettingsToGrid]);
 
   // Function to perform a batch update without refreshing the grid
   const batchUpdate = useCallback((updates: () => void) => {
@@ -335,6 +387,7 @@ export function DataTable({
 
   // Save current grid state to profile without refreshing the grid
   const handleSaveProfile = useCallback(() => {
+    console.log("--- handleSaveProfile START ---");
     if (gridRef.current?.api) {
       console.log('Saving profile - extracting current grid state');
 
@@ -473,80 +526,26 @@ export function DataTable({
         selectProfile(id);
       });
     } else {
-      // If grid is not ready, just select the profile
+      // If grid is not ready, just select the profile (apply will happen on grid ready)
       selectProfile(id);
     }
 
-    // Trigger settings application *after* the batch update logic has run
+    // Trigger settings application *after* the batch update logic and store update
     // Use setTimeout to ensure it runs after the current render cycle triggered by batchUpdate state changes
     setTimeout(() => {
-        console.log("Triggering settings apply after profile switch");
-        setApplySettingsTrigger(prev => prev + 1);
+      console.log("Triggering applySettingsToGrid after profile switch");
+      applySettingsToGrid();
     }, 0);
-  }, [selectProfile, batchUpdate]);
-
-  // Handle keyboard events, especially arrow keys during editing
-  const suppressKeyboardEvent = useCallback((params: SuppressKeyboardEventParams) => {
-    const { event, editing, api } = params;
-    console.log('suppressKeyboardEvent called:', {
-      key: event.key,
-      editing,
-      type: event.type,
-      target: event.target instanceof HTMLElement ? event.target.tagName : 'unknown'
-    });
-
-    // Handle arrow keys during editing
-    if (editing && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-      // Check if custom navigation after edit is enabled in grid options
-      const useCustomNavigation = sanitizedGridOptions?.useCustomNavigation === true;
-      console.log('useCustomNavigation enabled:', useCustomNavigation);
-
-      // If the feature is disabled, don't suppress the event
-      if (!useCustomNavigation) {
-        console.log('Feature disabled, not handling arrow keys');
-        return false;
-      }
-
-      // Stop editing and save changes
-      console.log('Stopping edit and saving changes');
-      api.stopEditing();
-
-      // Get the current focused cell
-      const focusedCell = api.getFocusedCell();
-      if (!focusedCell) {
-        console.log('No focused cell found');
-        return true; // Suppress the event anyway
-      }
-
-      console.log('Current focused cell:', focusedCell);
-
-      // Calculate the next row index
-      const nextRowIndex = event.key === 'ArrowUp' ?
-        focusedCell.rowIndex - 1 :
-        focusedCell.rowIndex + 1;
-
-      console.log('Moving to row:', nextRowIndex);
-
-      // Set focus to the next cell
-      setTimeout(() => {
-        api.setFocusedCell(nextRowIndex, focusedCell.column);
-      }, 0);
-
-      // Suppress the default event
-      return true;
-    }
-
-    // Don't suppress other events
-    return false;
-  }, [sanitizedGridOptions]);
+  }, [selectProfile, batchUpdate, applySettingsToGrid]); // Add applySettingsToGrid
 
   // Custom navigation handler to implement cell navigation behavior
   const navigateToNextCell = useCallback((params: any) => {
     // Add null check for gridRef.current.api
     const api = gridRef.current?.api;
-    if (!api) return nextCellPosition; // Return default if api not ready
-
+    // Destructure params *after* the api check
     const { nextCellPosition, previousCellPosition, event } = params;
+    // FIX: Return default *after* destructuring if api not ready
+    if (!api) return nextCellPosition;
 
     // If there's no next cell position (we're at an edge), decide what to do based on settings
     if (!nextCellPosition) {
@@ -600,24 +599,6 @@ export function DataTable({
     return nextCellPosition;
   }, [sanitizedGridOptions, gridRef]); // Add gridRef dependency
 
-  // We're now handling arrow key navigation in suppressKeyboardEvent instead
-
-  // Memoize the combined grid options passed to AgGridReact
-  const memoizedGridOptions = useMemo(() => {
-    // Start with external options, then override with sanitized store options
-    return {
-      ...externalGridOptions, // Apply external first
-      ...sanitizedGridOptions // Override with sanitized store options
-    };
-    // Dependencies ensure this recalculates if either source changes
-  }, [externalGridOptions, sanitizedGridOptions]);
-
-  // Memoize defaultColDef to ensure stability
-  const memoizedDefaultColDef = useMemo(() => ({
-    ...defaultColDef, // Assuming defaultColDef imported object is static
-    suppressKeyboardEvent: suppressKeyboardEvent // suppressKeyboardEvent is a useCallback, so stable
-  }), [suppressKeyboardEvent]);
-
   return (
     <div
       className={`flex h-full flex-col rounded-md border ${darkMode ? 'dark' : 'light'}`}
@@ -649,9 +630,9 @@ export function DataTable({
           <AgGridReact
             ref={gridRef}
             theme={gridTheme}
-            columnDefs={columnDefs}
-            rowData={rowData}
-            defaultColDef={memoizedDefaultColDef}
+            columnDefs={columnDefs} // Assuming this is memoized correctly upstream or stable
+            rowData={rowData} // Assuming this is memoized correctly upstream or stable
+            defaultColDef={memoizedDefaultColDef} // Use memoized version
             sideBar={true}
             domLayout="normal"
             className="h-full w-full"
@@ -659,7 +640,7 @@ export function DataTable({
             stopEditingWhenCellsLoseFocus={false}
             navigateToNextCell={navigateToNextCell}
             // Apply the memoized combined options object
-            {...memoizedGridOptions}
+            {...memoizedGridOptions} // Use memoized version
           />
         )}
       </div>
@@ -677,7 +658,7 @@ export function DataTable({
           setGeneralSettingsOpen(isOpen);
           if (!isOpen) {
             console.log("Triggering settings apply after General Settings close");
-            setApplySettingsTrigger(prev => prev + 1);
+            applySettingsToGrid();
           }
         }}
       />
@@ -689,7 +670,7 @@ export function DataTable({
           setColumnSettingsOpen(isOpen);
           if (!isOpen) {
              console.log("Triggering settings apply after Column Settings close");
-             setApplySettingsTrigger(prev => prev + 1);
+             applySettingsToGrid();
           }
         }}
         gridRef={gridRef}
