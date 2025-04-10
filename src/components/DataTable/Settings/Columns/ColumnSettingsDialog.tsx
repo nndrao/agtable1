@@ -979,46 +979,92 @@ export function ColumnSettingsDialog({
         // Apply value formatting settings if they've been changed
         if (colChanges.value && colChanges.value.formatType) {
           if (valueSettings.formatType === "number") {
-            updatedColDef.valueFormatter = (params: any) => {
-              if (params.value == null) return "";
-              return new Intl.NumberFormat("en-US", {
-                useGrouping: valueSettings.numberFormat.includes(","),
-                minimumFractionDigits:
-                  valueSettings.numberFormat.split(".")[1]?.length || 0,
-                maximumFractionDigits:
-                  valueSettings.numberFormat.split(".")[1]?.length || 0,
-              }).format(params.value);
-            };
+            // Use string expression instead of function
+            updatedColDef.valueFormatter = `
+              value == null || value === '' ? '' : 
+              isNaN(Number(value)) ? value : 
+              new Intl.NumberFormat("en-US", {
+                useGrouping: ${valueSettings.numberFormat.includes(",")},
+                minimumFractionDigits: ${valueSettings.numberFormat.split(".")[1]?.length || 0},
+                maximumFractionDigits: ${valueSettings.numberFormat.split(".")[1]?.length || 0}
+              }).format(Number(value))
+            `;
+            
+            // Store type for proper sorting
+            updatedColDef.type = "numericColumn";
           } else if (valueSettings.formatType === "currency") {
-            updatedColDef.valueFormatter = (params: any) => {
-              if (params.value == null) return "";
-              return new Intl.NumberFormat("en-US", {
+            // Use string expression instead of function
+            const currencyCode = valueSettings.currencySymbol === '€' ? 'EUR' : 
+                                valueSettings.currencySymbol === '£' ? 'GBP' :
+                                valueSettings.currencySymbol === '¥' ? 'JPY' : 'USD';
+            
+            updatedColDef.valueFormatter = `
+              value == null || value === '' ? '' : 
+              isNaN(Number(value)) ? value : 
+              new Intl.NumberFormat("en-US", {
                 style: "currency",
-                currency: "USD",
-                useGrouping: valueSettings.currencyFormat.includes(","),
-                minimumFractionDigits:
-                  valueSettings.currencyFormat.split(".")[1]?.length || 0,
-                maximumFractionDigits:
-                  valueSettings.currencyFormat.split(".")[1]?.length || 0,
-              }).format(params.value);
-            };
+                currency: "${currencyCode}",
+                useGrouping: ${valueSettings.currencyFormat.includes(",")},
+                minimumFractionDigits: ${valueSettings.currencyFormat.split(".")[1]?.length || 0},
+                maximumFractionDigits: ${valueSettings.currencyFormat.split(".")[1]?.length || 0}
+              }).format(Number(value))
+            `;
+            
+            // Store type for proper sorting
+            updatedColDef.type = "numericColumn";
+          } else if (valueSettings.formatType === "percent") {
+            // Use string expression instead of function
+            updatedColDef.valueFormatter = `
+              value == null || value === '' ? '' : 
+              isNaN(Number(value)) ? value : 
+              new Intl.NumberFormat("en-US", {
+                style: "percent",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              }).format(Number(value))
+            `;
+            
+            // Store type for proper sorting
+            updatedColDef.type = "numericColumn";
           } else if (valueSettings.formatType === "date") {
-            updatedColDef.valueFormatter = (params: any) => {
-              if (params.value == null) return "";
-              const date = new Date(params.value);
-              if (isNaN(date.getTime())) return params.value;
-              return new Intl.DateTimeFormat("en-US", {
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-                hour: valueSettings.dateFormat.includes("hh")
-                  ? "2-digit"
-                  : undefined,
-                minute: valueSettings.dateFormat.includes("hh")
-                  ? "2-digit"
-                  : undefined,
-              }).format(date);
-            };
+            // Use string expression for date formatting
+            const includeTime = valueSettings.dateFormat.includes("hh");
+            
+            updatedColDef.valueFormatter = `
+              value == null || value === '' ? '' : 
+              (() => {
+                try {
+                  const date = new Date(value);
+                  if (isNaN(date.getTime())) return value;
+                  return new Intl.DateTimeFormat("en-US", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit"${includeTime ? ',\n            hour: "2-digit",\n            minute: "2-digit"' : ''}
+                  }).format(date);
+                } catch (e) {
+                  return value;
+                }
+              })()
+            `;
+          } else if (valueSettings.formatType === "custom" && valueSettings.customFormat) {
+            // Handle custom format with string expression
+            // Store the custom format template
+            const template = valueSettings.customFormat;
+            
+            updatedColDef.valueFormatter = `
+              value == null || value === '' ? '' : 
+              (() => {
+                try {
+                  let result = "${template.replace(/"/g, '\\"')}";
+                  result = result.replace(/\\{value\\}/g, value);
+                  result = result.replace(/\\{row\\}/g, rowIndex);
+                  result = result.replace(/\\{col\\}/g, column.colId);
+                  return result;
+                } catch (e) {
+                  return value;
+                }
+              })()
+            `;
           }
         }
 
@@ -1048,19 +1094,42 @@ export function ColumnSettingsDialog({
           } 
           // If changing to date, set appropriate date-related properties
           else if (valueSettings.dataType === "date" || valueSettings.dataType === "dateString") {
+            // Only apply a default formatter if there isn't already one set
             if (!updatedColDef.valueFormatter) {
-              updatedColDef.valueFormatter = (params: any) => {
-                if (params.value == null) return "";
-                const date = new Date(params.value);
-                if (isNaN(date.getTime())) return params.value;
-                return new Intl.DateTimeFormat("en-US", {
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                }).format(date);
-              };
+              // Use string expression for date formatting
+              updatedColDef.valueFormatter = `
+                value == null || value === '' ? '' : 
+                (() => {
+                  try {
+                    const date = new Date(value);
+                    if (isNaN(date.getTime())) return value;
+                    return new Intl.DateTimeFormat("en-US", {
+                      year: "numeric", 
+                      month: "2-digit", 
+                      day: "2-digit"
+                    }).format(date);
+                  } catch (e) {
+                    return value;
+                  }
+                })()
+              `;
             }
           }
+        }
+
+        // In the section where value formatters are applied, add a flag to mark columns with custom formatters
+        // This should be in the updateColumnSettings function
+
+        // When applying any valueFormatter:
+        if (valueSettings.formatType !== "text") {
+          // Add this line after setting the valueFormatter
+          updatedColDef.suppressGlobalFormatterOverride = true;
+          updatedColDef.customFormatterApplied = true; // Add a custom flag to easily identify columns with formatters
+          
+          // Also ensure the colId is set properly for identification
+          updatedColDef.colId = updatedColDef.colId || colId;
+          
+          console.log(`Applied ${valueSettings.formatType} formatter to column ${colId} with override protection`);
         }
 
         return updatedColDef;
@@ -1140,6 +1209,37 @@ export function ColumnSettingsDialog({
 
     // Close dialog
     onOpenChange(false);
+
+    // Add this code before the dialog is closed:
+    // Perform a more thorough refresh to ensure formatters are fully applied
+    if (gridRef.current?.api) {
+      console.log('Performing thorough grid refresh to ensure formatters are applied');
+      
+      // First refresh cells
+      gridRef.current.api.refreshCells({ force: true });
+      
+      // Then trigger a complete client-side row model refresh
+      setTimeout(() => {
+        if (gridRef.current?.api) {
+          // For client-side row model, refresh everything
+          try {
+            gridRef.current.api.refreshClientSideRowModel('everything');
+            console.log('Client-side row model refresh completed');
+          } catch (e) {
+            // If not using client-side row model, this might throw an error
+            console.log('Could not refresh client side row model - using alternative refresh method');
+            // Alternative refresh method
+            gridRef.current.api.redrawRows();
+          }
+          
+          // Also dispatch a custom event that tells other components formatters have changed
+          const event = new CustomEvent('formattersUpdated', { 
+            detail: { columns: selectedColumns } 
+          });
+          document.dispatchEvent(event);
+        }
+      }, 100);
+    }
   }, [
     onOpenChange,
     setColumnState,
@@ -1147,6 +1247,7 @@ export function ColumnSettingsDialog({
     updateColumnSettings,
     changedProperties,
     hasChanges,
+    gridRef,
   ]);
 
   // Just updating the render part for a better UI
